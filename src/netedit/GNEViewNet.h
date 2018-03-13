@@ -429,6 +429,18 @@ private:
         int movingIndexShape;
     };
 
+    /// @brief struct used to move groups of edges
+    struct movingEdges {
+        /// @brief original shape before moving
+        PositionVector originalShape;
+        /// @bried index of moved geometry point
+        int index;
+        /// @brief original position of geometry point
+        Position originalPosition;
+        /// @brief flag to indicate if moving edge is moving inverted
+        bool inverted;
+    };
+
     /// @brief view parent
     GNEViewParent* myViewParent;
 
@@ -499,13 +511,6 @@ private:
 
     /// @brief Selected Edges that are being moved < Edge, PositionVector >
     std::map<GNEEdge*, PositionVector> myOriginShapesMovedEntireShapes;
-
-    struct movingEdges {
-        PositionVector originalShape;
-        int index;
-        Position originalPosition;
-        bool inverted;
-    };
 
     std::map<GNEEdge*, movingEdges> myOriginShapesMovedPartialShapes;
     // @}
