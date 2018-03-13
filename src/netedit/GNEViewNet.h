@@ -431,6 +431,23 @@ private:
 
     /// @brief struct used to move groups of edges
     struct movingEdges {
+        movingEdges() :
+            index(-1),
+            inverted(false),
+            myMovingEntireShape(false) {}
+
+        movingEdges(PositionVector _originalShape) :
+            originalShape(_originalShape),
+            index(-1),
+            inverted(false),
+            myMovingEntireShape(true) {}
+
+        movingEdges(Position _originalPosition, int _index) :
+            originalPosition(_originalPosition),
+            index(_index),
+            inverted(false),
+            myMovingEntireShape(false) {}
+
         /// @brief original shape before moving
         PositionVector originalShape;
         /// @bried index of moved geometry point
@@ -439,6 +456,12 @@ private:
         Position originalPosition;
         /// @brief flag to indicate if moving edge is moving inverted
         bool inverted;
+
+        bool isMovingEntireShape() const {
+            return myMovingEntireShape;
+        }
+    private:
+        bool myMovingEntireShape;
     };
 
     /// @brief view parent
@@ -509,10 +532,8 @@ private:
     /** NOTE: IN the future will be changed to std::map<GNENetElement*, Position> **/
     std::map<GNEJunction*, Position> myOriginPositionOfMovedJunctions;
 
-    /// @brief Selected Edges that are being moved < Edge, PositionVector >
-    std::map<GNEEdge*, PositionVector> myOriginShapesMovedEntireShapes;
 
-    std::map<GNEEdge*, movingEdges> myOriginShapesMovedPartialShapes;
+    std::map<GNEEdge*, movingEdges> myMovedEdges;
     // @}
 
     /// @name state-variables of inspect-mode and select-mode
