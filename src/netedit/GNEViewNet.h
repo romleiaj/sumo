@@ -432,36 +432,32 @@ private:
     /// @brief struct used to move groups of edges
     struct movingEdges {
         movingEdges() :
-            index(-1),
-            inverted(false),
-            myMovingEntireShape(false) {}
+            index(-1) {}
 
+        /// @brief constructor used when the entire edge shape is moved
         movingEdges(PositionVector _originalShape) :
             originalShape(_originalShape),
-            index(-1),
-            inverted(false),
-            myMovingEntireShape(true) {}
+            index(-1) {}
 
-        movingEdges(Position _originalPosition, int _index) :
+        /// @brief constructor used when only a geometry points are moved
+        movingEdges(PositionVector _originalShape, Position _originalPosition, int _index) :
+            originalShape(_originalShape),
             originalPosition(_originalPosition),
-            index(_index),
-            inverted(false),
-            myMovingEntireShape(false) {}
+            index(_index) {}
+
+        /// @brief return true if  the entire shape are being moved
+        bool isMovingEntireShape() const {
+            return index == -1;
+        }
 
         /// @brief original shape before moving
         PositionVector originalShape;
+
         /// @bried index of moved geometry point
         int index;
+
         /// @brief original position of geometry point
         Position originalPosition;
-        /// @brief flag to indicate if moving edge is moving inverted
-        bool inverted;
-
-        bool isMovingEntireShape() const {
-            return myMovingEntireShape;
-        }
-    private:
-        bool myMovingEntireShape;
     };
 
     /// @brief view parent

@@ -388,7 +388,7 @@ GNEViewNet::stopEditCustomShape() {
 
 
 void
-GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& originPosition) {
+GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& clickedPosition) {
     // enable moving selection
     myMovingSelection = true;
     // obtain Junctions and edges selected
@@ -409,11 +409,23 @@ GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& o
         GNEEdge* clickedEdge = dynamic_cast<GNEEdge*>(originAC);
         // if clicked edge has origin and destiny junction selected, move shapes of all selected edges
         if ((myOriginPositionOfMovedJunctions.count(clickedEdge->getGNEJunctionSource()) > 0 &&
-                myOriginPositionOfMovedJunctions.count(clickedEdge->getGNEJunctionDestiny()) > 0)) {
+            (myOriginPositionOfMovedJunctions.count(clickedEdge->getGNEJunctionDestiny()) > 0))) {
             for (auto i : selectedEdges) {
                 myMovedEdges[i] = movingEdges(i->getNBEdge()->getInnerGeometry());
             }
         } else {
+            // in other case, we have to concentrate only in the clicked edge and in their opposite edge (if it's also selected)
+            PositionVector oldGeometry = clickedEdge->getNBEdge()->getInnerGeometry();
+            int index = clickedEdge->getVertexIndex(clickedPosition);
+            myMovedEdges[clickedEdge] = movingEdges(oldGeometry, clickedPosition, index);
+            GNEEdge *oppositeEdge = clickedEdge->getOppositeEdge();
+            if(oppositeEdge) {
+                myMovedEdges[oppositeEdge] = movingEdges(oppositeEdge->getNBEdge()->getInnerGeometry(), clickedPosition, index);
+                oppositeEdge->getNBEdge()->setGeometry(clickedEdge->getNBEdge()->getInnerGeometry().reverse(), true);
+                oppositeEdge->updateGeometry();
+            }
+
+/***********************
             // declare three groups for dividing edges
             std::vector<GNEEdge*> noJunctionsSelected;
             std::vector<GNEEdge*> originJunctionSelected;
@@ -474,6 +486,7 @@ GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& o
                     myMovedEdges[i].index = i->getVertexIndex(myMovedEdges[i].originalPosition);
                 }
             }
+***********************/
         }
     }
 }
