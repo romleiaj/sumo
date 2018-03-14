@@ -403,6 +403,27 @@ private:
         GNEAdditional* additionalToMove;
     };
 
+    /// @brief struct used to move a Geometry Point of a shape
+    struct moveGeometryPoint {
+        moveGeometryPoint() :
+            index(-1) {}
+
+        /// @brief constructor used when only a geometry points are moved
+        moveGeometryPoint(PositionVector _originalShape, Position _originalPosition, int _index) :
+            originalShape(_originalShape),
+            originalPosition(_originalPosition),
+            index(_index) {}
+
+        /// @brief original shape before moving
+        PositionVector originalShape;
+
+        /// @bried index of moved geometry point
+        int index;
+
+        /// @brief original position of geometry point
+        Position originalPosition;
+    };
+
     /// @brief struct used to group all variables related with movement of single elements
     struct moveSingleElementValues {
         /// @brief constructor
@@ -429,35 +450,28 @@ private:
         int movingIndexShape;
     };
 
-    /// @brief struct used to move groups of edges
-    struct movingEdges {
-        movingEdges() :
-            index(-1) {}
+    struct moveMultipleElementValues {
+        moveMultipleElementValues() :
+            movingSelection(false),
+            junctionSourceSelected(false),
+            junctionDestinySelected(false) {}
 
-        /// @brief constructor used when the entire edge shape is moved
-        movingEdges(PositionVector _originalShape) :
-            originalShape(_originalShape),
-            index(-1) {}
+        /// @brief whether a selection is being moved
+        bool movingSelection;
 
-        /// @brief constructor used when only a geometry points are moved
-        movingEdges(PositionVector _originalShape, Position _originalPosition, int _index) :
-            originalShape(_originalShape),
-            originalPosition(_originalPosition),
-            index(_index) {}
+        /// @brief Map with the moved junctions
+        std::map<GNEJunction*, Position> originPositionOfMovedJunctions;
 
-        /// @brief return true if  the entire shape are being moved
-        bool isMovingEntireShape() const {
-            return index == -1;
-        }
+        /// map with the moved edges (Entire shape)
+        std::map<GNEEdge*, PositionVector> movingEntireEdges;
 
-        /// @brief original shape before moving
-        PositionVector originalShape;
+        std::pair<GNEEdge*, moveGeometryPoint> movedEdge;
 
-        /// @bried index of moved geometry point
-        int index;
+        std::pair<GNEEdge*, PositionVector> movedOppositedEdge;
 
-        /// @brief original position of geometry point
-        Position originalPosition;
+        bool junctionSourceSelected;
+
+        bool junctionDestinySelected;
     };
 
     /// @brief view parent
@@ -521,15 +535,8 @@ private:
     /// @brief variable used to save variables related with movement of single elements 
     moveSingleElementValues myMoveSingleElementValues;
 
-    /// @brief whether a selection is being moved
-    bool myMovingSelection;
-
-    /// @brief Selected Junctions that are being moved
-    /** NOTE: IN the future will be changed to std::map<GNENetElement*, Position> **/
-    std::map<GNEJunction*, Position> myOriginPositionOfMovedJunctions;
-
-
-    std::map<GNEEdge*, movingEdges> myMovedEdges;
+    /// @brief variable used to save variables related with movement of multiple elements 
+    moveMultipleElementValues myMoveMultipleElementValues;
     // @}
 
     /// @name state-variables of inspect-mode and select-mode
