@@ -418,7 +418,7 @@ GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& c
                 //myMoveMultipleElementValues.movedOppositedEdge.first = oppositeEdge;
                 // Calculate the position over shape of the clicked position in the first shape
                 oppositeEdge->getNBEdge()->getGeometry().nearest_offset_to_point2D(clickedPosition);
-                int geometryPointIndexOppositeEdge = oppositeEdge->getVertexIndex(oppositeEdge->getNBEdge()->getGeometry().positionAtOffset(oppositeEdge->getNBEdge()->getGeometry().nearest_offset_to_point2D(clickedPosition)), false);
+                int geometryPointIndexOppositeEdge = oppositeEdge->getVertexIndex(oppositeEdge->getNBEdge()->getGeometry().positionAtOffset(oppositeEdge->getNBEdge()->getGeometry().nearest_offset_to_point2D(clickedPosition)), true);
                 if((geometryPointIndexOppositeEdge != -1) && (geometryPointIndexOppositeEdge < oppositeEdge->getNBEdge()->getInnerGeometry().size())) {
                     myMoveMultipleElementValues.movedOppositedEdge.first = oppositeEdge;
                     myMoveMultipleElementValues.movedOppositedEdge.second = moveGeometryPoint(oppositeEdge->getNBEdge()->getInnerGeometry(), oppositeEdge->getNBEdge()->getInnerGeometry()[geometryPointIndexOppositeEdge], geometryPointIndexOppositeEdge);
