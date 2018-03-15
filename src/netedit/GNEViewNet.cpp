@@ -391,28 +391,29 @@ GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& c
     // obtain Junctions and edges selected
     std::vector<GNEJunction*> selectedJunctions = myNet->retrieveJunctions(true);
     std::vector<GNEEdge*> selectedEdges = myNet->retrieveEdges(true);
-    // Junctions are always moved, then save position of current selected junctions (Needed when mouse is released)
-    for (auto i : selectedJunctions) {
-        myMoveMultipleElementValues.movedJunctions[i] = i->getPositionInView();
-    }
-    // make special movement depending of clicked AC
+    // if we clicked over an junction, move all selected edges and junctions
     if (originAC->getTag() == SUMO_TAG_JUNCTION) {
-        // if clicked element is a junction, move shapes of all selected edges
+        for (auto i : selectedJunctions) {
+            myMoveMultipleElementValues.movedJunctions[i] = i->getPositionInView();
+        }
         for (auto i : selectedEdges) {
             myMoveMultipleElementValues.movedEdgesEntireShape[i] = i->getNBEdge()->getInnerGeometry();
         }
+        /*
+        // edges with both junctions selected are always moved
+        for (auto i : selectedEdges) {
+            if (gSelected.isSelected(GLO_JUNCTION, i->getGNEJunctionSource()->getGlID()) && gSelected.isSelected(GLO_JUNCTION, i->getGNEJunctionDestiny()->getGlID())) {
+                myMoveMultipleElementValues.movedEdgesEntireShape[i] = i->getNBEdge()->getInnerGeometry();
+            }
+        }*/
     } else if (originAC->getTag() == SUMO_TAG_EDGE) {
-        // obtain clicked edge
+    // make special movement if clicked element is an edge that doens't have both junctions selected
         GNEEdge* clickedEdge = dynamic_cast<GNEEdge*>(originAC);
         // get selection status of junctions
         myMoveMultipleElementValues.junctionSourceSelected = gSelected.isSelected(GLO_JUNCTION, clickedEdge->getGNEJunctionSource()->getGlID());
         myMoveMultipleElementValues.junctionDestinySelected = gSelected.isSelected(GLO_JUNCTION, clickedEdge->getGNEJunctionDestiny()->getGlID());
-        // if clicked edge has origin and destiny junction selected, move shapes of all selected edges
-        if (myMoveMultipleElementValues.junctionSourceSelected && myMoveMultipleElementValues.junctionDestinySelected) {
-            for (auto i : selectedEdges) {
-                myMoveMultipleElementValues.movedEdgesEntireShape[i] = i->getNBEdge()->getInnerGeometry();
-            }
-        } else {
+        // check if at least one of junctions of clicked edge ins't selected
+        if (!myMoveMultipleElementValues.junctionSourceSelected || !myMoveMultipleElementValues.junctionDestinySelected) {
             // in other case, we have to concentrate only in the clicked edge and in their opposite edge (if it's also selected)
             PositionVector oldGeometry = clickedEdge->getNBEdge()->getInnerGeometry();
             int geometryPointIndex = clickedEdge->getVertexIndex(clickedPosition);
@@ -425,6 +426,25 @@ GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& c
                 myMoveMultipleElementValues.movedOppositedEdge.second = oppositeEdge->getNBEdge()->getInnerGeometry();
                 myMoveMultipleElementValues.movedOppositedEdge.first->getNBEdge()->setGeometry(myMoveMultipleElementValues.movedEdge.first->getNBEdge()->getInnerGeometry().reverse(), true);
                 myMoveMultipleElementValues.movedOppositedEdge.first->updateGeometry();
+            }
+            // if at least one of the junction of clicked edge is selected, move all selected junctions and edges 
+            if (myMoveMultipleElementValues.junctionSourceSelected || myMoveMultipleElementValues.junctionDestinySelected) {
+                for (auto i : selectedJunctions) {
+                    myMoveMultipleElementValues.movedJunctions[i] = i->getPositionInView();
+                }
+                for (auto i : selectedEdges) {
+                    if (i != clickedEdge) {
+                        myMoveMultipleElementValues.movedEdgesEntireShape[i] = i->getNBEdge()->getInnerGeometry();
+                    }
+                }
+            }
+        } else {
+            // move all selected elements
+            for (auto i : selectedJunctions) {
+                myMoveMultipleElementValues.movedJunctions[i] = i->getPositionInView();
+            }
+            for (auto i : selectedEdges) {
+                myMoveMultipleElementValues.movedEdgesEntireShape[i] = i->getNBEdge()->getInnerGeometry();
             }
         }
     }
