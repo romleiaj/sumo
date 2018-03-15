@@ -37,11 +37,38 @@
 #include <utils/common/ToString.h>
 #include <utils/common/Named.h>
 #include "AccessEdge.h"
+#include "CarEdge.h"
 #include "IntermodalEdge.h"
+#include "PedestrianEdge.h"
 #include "PublicTransportEdge.h"
+#include "StopEdge.h"
 #include "SUMOVehicleParameter.h"
 
 //#define IntermodalRouter_DEBUG_NETWORK
+
+
+// ===========================================================================
+// function definitions
+// ===========================================================================
+template <class E, class L>
+inline const L* getSidewalk(const E* edge) {
+    if (edge == nullptr) {
+        return nullptr;
+    }
+    // prefer lanes that are exclusive to pedestrians
+    const std::vector<L*>& lanes = edge->getLanes();
+    for (const L* const lane : lanes) {
+        if (lane->getPermissions() == SVC_PEDESTRIAN) {
+            return lane;
+        }
+    }
+    for (const L* const lane : lanes) {
+        if (lane->allowsVehicleClass(SVC_PEDESTRIAN)) {
+            return lane;
+        }
+    }
+    return nullptr;
+}
 
 
 // ===========================================================================
@@ -369,7 +396,7 @@ public:
     * @param[in] pos The relative position on the edge where the stop is located
     * @param[in] category The type of stop
     */
-    void addAccess(const std::string& stopId, const E* stopEdge, const double pos, const SumoXMLTag category) {
+    void addAccess(const std::string& stopId, const E* stopEdge, const double pos, const double length, const SumoXMLTag category) {
         assert(stopEdge != 0);
         if (myStopConnections.count(stopId) == 0) {
             myStopConnections[stopId] = new StopEdge<E, L, N, V>(stopId, myNumericalID++, stopEdge);
@@ -383,22 +410,22 @@ public:
             bool needSplit;
             const int splitIndex = findSplitIndex(pair.first, pos, relPos, needSplit);
             _IntermodalEdge* const fwdSplit = needSplit ? new PedestrianEdge<E, L, N, V>(myNumericalID++, stopEdge, lane, true, pos) : nullptr;
-            splitEdge(pair.first, splitIndex, fwdSplit, relPos, needSplit, stopConn);
+            splitEdge(pair.first, splitIndex, fwdSplit, relPos, length, needSplit, stopConn);
             _IntermodalEdge* const backSplit = needSplit ? new PedestrianEdge<E, L, N, V>(myNumericalID++, stopEdge, lane, false, pos) : nullptr;
-            splitEdge(pair.second, splitIndex, backSplit, relPos, needSplit, stopConn, false);
+            splitEdge(pair.second, splitIndex, backSplit, relPos, length, needSplit, stopConn, false);
             _IntermodalEdge* carSplit = nullptr;
             if (myCarLookup.count(stopEdge) > 0) {
                 if (needSplit) {
                     carSplit = new CarEdge<E, L, N, V>(myNumericalID++, stopEdge, pos);
                 }
-                splitEdge(myCarLookup[stopEdge], splitIndex, carSplit, relPos, needSplit, stopConn, true, false);
+                splitEdge(myCarLookup[stopEdge], splitIndex, carSplit, relPos, length, needSplit, stopConn, true, false);
             }
             if (needSplit) {
                 if (carSplit != nullptr && ((category == SUMO_TAG_PARKING_AREA && (myCarWalkTransfer & PARKING_AREAS) != 0) || (category == SUMO_TAG_BUS_STOP && (myCarWalkTransfer & PT_STOPS) != 0))) {
                     // adding access from car to walk
                     _IntermodalEdge* const beforeSplit = myAccessSplits[myCarLookup[stopEdge]][splitIndex];
                     for (_IntermodalEdge* conn : { fwdSplit, backSplit }) {
-                        _AccessEdge* access = new _AccessEdge(myNumericalID++, beforeSplit, conn);
+                        _AccessEdge* access = new _AccessEdge(myNumericalID++, beforeSplit, conn, length);
                         addEdge(access);
                         beforeSplit->addSuccessor(access);
                         access->addSuccessor(conn);
@@ -560,7 +587,7 @@ private:
     * @param[in] addExit whether we can just enter the stop or exit as well (cars should not exit yet)
     */
     void splitEdge(_IntermodalEdge* const toSplit, int splitIndex,
-        _IntermodalEdge* afterSplit, const double relPos, const bool needSplit,
+        _IntermodalEdge* afterSplit, const double relPos, const double length, const bool needSplit,
         _IntermodalEdge* const stopConn, const bool forward = true, const bool addExit = true) {
         std::vector<_IntermodalEdge*>& splitList = myAccessSplits[toSplit];
         if (splitList.empty()) {
@@ -595,13 +622,13 @@ private:
             afterSplit = splitList[splitIndex + 1];
         }
         // add access to / from edge
-        _AccessEdge* access = new _AccessEdge(myNumericalID++, beforeSplit, stopConn);
+        _AccessEdge* access = new _AccessEdge(myNumericalID++, beforeSplit, stopConn, length);
         addEdge(access);
         beforeSplit->addSuccessor(access);
         access->addSuccessor(stopConn);
         if (addExit) {
             // pedestrian case only, exit from public to pedestrian
-            _AccessEdge* exit = new _AccessEdge(myNumericalID++, stopConn, afterSplit);
+            _AccessEdge* exit = new _AccessEdge(myNumericalID++, stopConn, afterSplit, length);
             addEdge(exit);
             stopConn->addSuccessor(exit);
             exit->addSuccessor(afterSplit);
