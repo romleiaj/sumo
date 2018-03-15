@@ -159,7 +159,7 @@ private:
     /** @brief writes the response of a certain lane
         Returns the next link index within the junction */
     int writeLaneResponse(OutputDevice& od, NBEdge* from, int lane,
-                          int pos, const bool checkLaneFoes) const;
+                          int pos, const bool checkLaneFoes, bool padding) const;
 
     /** @brief writes the response of a certain crossing
         Returns the next link index within the junction */
@@ -184,8 +184,7 @@ private:
      * @return the response string
      * @exception IOError not yet implemented
      */
-    std::string getResponseString(int tlIndex, const NBEdge* const from, const NBEdge* const to,
-                                  int fromLane, int toLane, bool mayDefinitelyPass, const bool checkLaneFoes) const;
+    std::string getResponseString(const NBEdge* const from, const NBEdge::Connection& c, const bool checkLaneFoes) const;
 
 
     /** writes which participating links are foes to the given */
