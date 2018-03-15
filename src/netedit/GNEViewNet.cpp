@@ -399,15 +399,8 @@ GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& c
         for (auto i : selectedEdges) {
             myMoveMultipleElementValues.movedEdgesEntireShape[i] = i->getNBEdge()->getInnerGeometry();
         }
-        /*
-        // edges with both junctions selected are always moved
-        for (auto i : selectedEdges) {
-            if (gSelected.isSelected(GLO_JUNCTION, i->getGNEJunctionSource()->getGlID()) && gSelected.isSelected(GLO_JUNCTION, i->getGNEJunctionDestiny()->getGlID())) {
-                myMoveMultipleElementValues.movedEdgesEntireShape[i] = i->getNBEdge()->getInnerGeometry();
-            }
-        }*/
     } else if (originAC->getTag() == SUMO_TAG_EDGE) {
-    // make special movement if clicked element is an edge that doens't have both junctions selected
+        // make special movement if clicked element is an edge that doens't have both junctions selected
         GNEEdge* clickedEdge = dynamic_cast<GNEEdge*>(originAC);
         // get selection status of junctions
         myMoveMultipleElementValues.junctionSourceSelected = gSelected.isSelected(GLO_JUNCTION, clickedEdge->getGNEJunctionSource()->getGlID());
@@ -422,10 +415,14 @@ GNEViewNet::begingMoveSelection(GNEAttributeCarrier* originAC, const Position& c
             GNEEdge *oppositeEdge = clickedEdge->getOppositeEdge();
             // Reply the same operation (but using the reverse shape) in the opposite edge exist and is selected
             if(oppositeEdge && gSelected.isSelected(GLO_EDGE, oppositeEdge->getGlID())) {
-                myMoveMultipleElementValues.movedOppositedEdge.first = oppositeEdge;
-                myMoveMultipleElementValues.movedOppositedEdge.second = oppositeEdge->getNBEdge()->getInnerGeometry();
-                myMoveMultipleElementValues.movedOppositedEdge.first->getNBEdge()->setGeometry(myMoveMultipleElementValues.movedEdge.first->getNBEdge()->getInnerGeometry().reverse(), true);
-                myMoveMultipleElementValues.movedOppositedEdge.first->updateGeometry();
+                //myMoveMultipleElementValues.movedOppositedEdge.first = oppositeEdge;
+                // Calculate the position over shape of the clicked position in the first shape
+                oppositeEdge->getNBEdge()->getGeometry().nearest_offset_to_point2D(clickedPosition);
+                int geometryPointIndexOppositeEdge = oppositeEdge->getVertexIndex(oppositeEdge->getNBEdge()->getGeometry().positionAtOffset(oppositeEdge->getNBEdge()->getGeometry().nearest_offset_to_point2D(clickedPosition)), false);
+                if((geometryPointIndexOppositeEdge != -1) && (geometryPointIndexOppositeEdge < oppositeEdge->getNBEdge()->getInnerGeometry().size())) {
+                    myMoveMultipleElementValues.movedOppositedEdge.first = oppositeEdge;
+                    myMoveMultipleElementValues.movedOppositedEdge.second = moveGeometryPoint(oppositeEdge->getNBEdge()->getInnerGeometry(), oppositeEdge->getNBEdge()->getInnerGeometry()[geometryPointIndexOppositeEdge], geometryPointIndexOppositeEdge);
+                }
             }
             // if at least one of the junction of clicked edge is selected, move all selected junctions and edges 
             if (myMoveMultipleElementValues.junctionSourceSelected || myMoveMultipleElementValues.junctionDestinySelected) {
@@ -477,8 +474,7 @@ GNEViewNet::moveSelection(const Position& offset) {
             }
         }
         if(myMoveMultipleElementValues.movedOppositedEdge.first != NULL) {
-            myMoveMultipleElementValues.movedOppositedEdge.first->getNBEdge()->setGeometry(myMoveMultipleElementValues.movedEdge.first->getNBEdge()->getInnerGeometry().reverse(), true);
-            myMoveMultipleElementValues.movedOppositedEdge.first->updateGeometry();
+            myMoveMultipleElementValues.movedOppositedEdge.first->moveVertexShape(myMoveMultipleElementValues.movedOppositedEdge.second.index, myMoveMultipleElementValues.movedOppositedEdge.second.originalPosition, offset);
         }
     }
 }
@@ -504,7 +500,7 @@ GNEViewNet::finishMoveSelection() {
         myMoveMultipleElementValues.movedEdge.first->commitShapeChange(myMoveMultipleElementValues.movedEdge.second.originalShape, myUndoList);
         myMoveMultipleElementValues.movedEdge.first = NULL;
         if(myMoveMultipleElementValues.movedOppositedEdge.first != NULL) {
-            myMoveMultipleElementValues.movedOppositedEdge.first->commitShapeChange(myMoveMultipleElementValues.movedOppositedEdge.second, myUndoList);
+            myMoveMultipleElementValues.movedOppositedEdge.first->commitShapeChange(myMoveMultipleElementValues.movedOppositedEdge.second.originalShape, myUndoList);
             myMoveMultipleElementValues.movedOppositedEdge.first = NULL;
         }
     }
@@ -614,8 +610,17 @@ GNEViewNet::doPaintGL(int mode, const Boundary& bound) {
     int hits2 = myGrid->Search(minB, maxB, *myVisualizationSettings);
 
     glTranslated(0, 0, GLO_ADDITIONAL);
-    for (std::map<const GUIGlObject*, int>::iterator i = myAdditionallyDrawn.begin(); i != myAdditionallyDrawn.end(); ++i) {
-        (i->first)->drawGLAdditional(this, *myVisualizationSettings);
+    for (auto i : myAdditionallyDrawn) {
+        i.first->drawGLAdditional(this, *myVisualizationSettings);
+    }
+
+    if((myMoveMultipleElementValues.movedEdge.first != NULL) && (myMoveMultipleElementValues.movedOppositedEdge.first != NULL)) {
+        glPushMatrix();
+        glLineWidth(2);
+        GLHelper::setColor(RGBColor::YELLOW);
+        GLHelper::drawLine(myMoveMultipleElementValues.movedEdge.first->getNBEdge()->getInnerGeometry()[myMoveMultipleElementValues.movedEdge.second.index],
+                           myMoveMultipleElementValues.movedOppositedEdge.first->getNBEdge()->getInnerGeometry()[myMoveMultipleElementValues.movedOppositedEdge.second.index]);
+        glPopMatrix();
     }
 
     glPopMatrix();

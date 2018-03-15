@@ -470,7 +470,7 @@ private:
         std::pair<GNEEdge*, moveGeometryPoint> movedEdge;
 
         /// @brief opposige edge of movedEdge and their original shape
-        std::pair<GNEEdge*, PositionVector> movedOppositedEdge;
+        std::pair<GNEEdge*, moveGeometryPoint> movedOppositedEdge;
 
         /// @brief flag to indicate if junction source of movedEdge is selected
         bool junctionSourceSelected;
