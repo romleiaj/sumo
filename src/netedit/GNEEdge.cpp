@@ -405,6 +405,8 @@ GNEEdge::drawGL(const GUIVisualizationSettings& s) const {
     if (myNBEdge.isMacroscopicConnector()) {
     }
     */
+    // declare offset used when a geometry point is selected, to avoid overlapping with another non selected geometry point
+    double offsetSelection = 0;
     // obtain resolution for points
     int circleResolution = 0;
     if (s.scale >= 10) {
@@ -426,6 +428,7 @@ GNEEdge::drawGL(const GUIVisualizationSettings& s) const {
         if (gSelected.isSelected(getType(), getGlID()) && s.laneColorer.getActive() != 1) {
             // override with special colors (unless the color scheme is based on selection)
             GLHelper::setColor(GNENet::selectionColor.changedBrightness(-20));
+            offsetSelection = 0.001;
         }
         // recognize full transparency and simply don't draw
         GLfloat color[4];
@@ -437,7 +440,7 @@ GNEEdge::drawGL(const GUIVisualizationSettings& s) const {
             for (int i = 1; i < (int)myNBEdge.getGeometry().size() - 1; i++) {
                 Position pos = myNBEdge.getGeometry()[i];
                 glPushMatrix();
-                glTranslated(pos.x(), pos.y(), GLO_JUNCTION - 0.01);
+                glTranslated(pos.x(), pos.y(), GLO_JUNCTION - 0.01 + offsetSelection);
                 // resolution of drawn circle depending of the zoom (To improve smothness)
                 GLHelper::drawFilledCircle(SNAP_RADIUS * MIN2((double)1, s.laneWidthExaggeration), circleResolution);
                 glPopMatrix();
@@ -463,7 +466,7 @@ GNEEdge::drawGL(const GUIVisualizationSettings& s) const {
             }
             if(myNBEdge.getGeometry().back() != myGNEJunctionDestiny->getPositionInView()) {
                 glPushMatrix();
-                glTranslated(myNBEdge.getGeometry().back().x(), myNBEdge.getGeometry().back().y(), GLO_JUNCTION - 0.01);
+                glTranslated(myNBEdge.getGeometry().back().x(), myNBEdge.getGeometry().back().y(), GLO_JUNCTION - 0.01 + offsetSelection);
                 // resolution of drawn circle depending of the zoom (To improve smothness)
                 GLHelper::drawFilledCircle(SNAP_RADIUS * MIN2((double)1, s.laneWidthExaggeration), circleResolution);
                 glPopMatrix();
