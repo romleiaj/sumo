@@ -28,14 +28,15 @@
 #endif
 
 #include <string>
-#include <utils/gui/globjects/GLIncludes.h>
-#include <utils/geom/Boundary.h>
-#include <utils/geom/Position.h>
 #include <utils/common/RGBColor.h>
-#include <utils/geom/PositionVector.h>
-#include <utils/gui/windows/GUISUMOAbstractView.h>
 #include <utils/common/StringBijection.h>
 #include <utils/foxtools/MFXCheckableButton.h>
+#include <utils/geom/Boundary.h>
+#include <utils/geom/Position.h>
+#include <utils/geom/PositionVector.h>
+#include <utils/gui/globjects/GLIncludes.h>
+#include <utils/gui/windows/GUISUMOAbstractView.h>
+#include <utils/options/OptionsCont.h>
 
 
 // ===========================================================================
@@ -379,7 +380,7 @@ protected:
 private:
     /// @brief struct used to group all pointers to moved elements
     struct movedItems {
-        /// @brief constuctor
+        /// @brief default constuctor
         movedItems() :
             junctionToMove(NULL),
             edgeToMove(NULL),
@@ -405,6 +406,7 @@ private:
 
     /// @brief struct used to move a Geometry Point of a shape
     struct moveGeometryPoint {
+        /// @brief default constructor
         moveGeometryPoint() :
             index(-1) {}
 
@@ -426,53 +428,110 @@ private:
 
     /// @brief struct used to group all variables related with movement of single elements
     struct moveSingleElementValues {
-        /// @brief constructor
+        /// @brief default constructor
         moveSingleElementValues() :
             movingStartPos(false),
-            movingEndPos(false),
-            movingIndexShape(-1) {}
+            movingEndPos(false) {}
 
         /// @brief variable for calculating moving offset (Used when user doesn't click exactly over the center of shape)
         Position movingReference;
 
-        /// @brief original Position of element before moving (needed for commmit position changes)
-        Position movingOriginalPosition;
+        /// @brief struct used to save all variables for moving a shape
+        moveGeometryPoint geometryPoint;
 
-        /// @brief Shape of elements before moving (needed for commmit shape changes)
-        PositionVector movingOriginalShape;
-        PositionVector movingOriginalShape2;
-
-        /// @brief bool to indicate that startPos are being moved
+        /// @brief flag to indicate that startPos are being moved
         bool movingStartPos;
-        bool movingEndPos;
 
-        /// @brief current index of shape that are being moved
-        int movingIndexShape;
+        /// @brief flag to indicate that endPos are being moved
+        bool movingEndPos;
     };
 
+    /// @brief struct used to group all variables related with movement of multiple elements
     struct moveMultipleElementValues {
+        /// @brief default constructor
         moveMultipleElementValues() :
             movingSelection(false),
             junctionSourceSelected(false),
-            junctionDestinySelected(false) {}
+            junctionDestinySelected(false) {
+                movedEdge.first = NULL;
+                movedOppositedEdge.first = NULL;
+            }
 
         /// @brief whether a selection is being moved
         bool movingSelection;
 
-        /// @brief Map with the moved junctions
-        std::map<GNEJunction*, Position> originPositionOfMovedJunctions;
+        /// @brief Map with the moved junctions and their original positions
+        std::map<GNEJunction*, Position> movedJunctions;
 
-        /// map with the moved edges (Entire shape)
-        std::map<GNEEdge*, PositionVector> movingEntireEdges;
+        /// @brief map with the moved edges (Entire shape) and their original shapes
+        std::map<GNEEdge*, PositionVector> movedEdgesEntireShape;
 
+        /// @brief single moved edge and their moved geometry point
         std::pair<GNEEdge*, moveGeometryPoint> movedEdge;
 
+        /// @brief opposige edge of movedEdge and their original shape
         std::pair<GNEEdge*, PositionVector> movedOppositedEdge;
 
+        /// @brief flag to indicate if junction source of movedEdge is selected
         bool junctionSourceSelected;
 
+        /// @brief flag to indicate if junction destiny of movedEdge is selected
         bool junctionDestinySelected;
     };
+
+    /// @brief struct used to group all variables related with selecting using a square or polygon
+    /// @note in the future the variables used for selecting throught a polygon will be placed here
+    struct selectingArea {
+        /// @brief default constructor
+        selectingArea() :
+            selectinUsingRectangle(false) {}
+
+        /// @brief whether we have started rectangle-selection
+        bool selectinUsingRectangle;
+
+        /// @brief firstcorner of the rectangle-selection
+        Position selectionCorner1;
+
+        /// @brief second corner of the rectangle-selection
+        Position selectionCorner2;
+    };
+
+    /// @brief struct used to group all variables related with testing
+    struct testingMode {
+        /// @brief default constructor
+        testingMode() :
+            testingEnabled(OptionsCont::getOptions().getBool("gui-testing")),
+            testingWidth(0),
+            testingHeight(0) {}
+
+        /// @brief flag to enable or disable testing mode
+        bool testingEnabled;
+
+        /// @brief Width of viewNet in testing mode
+        int testingWidth;
+
+        /// @brief Height of viewNet in testing mode
+        int testingHeight;
+    };
+
+    /// @name the state-variables for moving elements
+    // @{
+
+    /// @brief variable use to save pointers to moved elements
+    movedItems myMovedItems;
+
+    /// @brief variable used to save variables related with movement of single elements 
+    moveSingleElementValues myMoveSingleElementValues;
+
+    /// @brief variable used to save variables related with movement of multiple elements 
+    moveMultipleElementValues myMoveMultipleElementValues;
+    // @}
+
+    /// @brief variable used to save variables related with selecting areas
+    selectingArea mySelectingArea;
+
+    /// @brief variable used to save variables related with testing mode
+    testingMode myTestingMode;
 
     /// @brief view parent
     GNEViewParent* myViewParent;
@@ -527,28 +586,6 @@ private:
 
     /// @brief apply movement to elevation
     FXMenuCheck* myMenuCheckMoveElevation;
-    // @}
-
-    /// @brief variable use to save pointers to moved elements
-    movedItems myMovedItems;
-
-    /// @brief variable used to save variables related with movement of single elements 
-    moveSingleElementValues myMoveSingleElementValues;
-
-    /// @brief variable used to save variables related with movement of multiple elements 
-    moveMultipleElementValues myMoveMultipleElementValues;
-    // @}
-
-    /// @name state-variables of inspect-mode and select-mode
-    // @{
-    /// @brief whether we have started rectangle-selection
-    bool myAmInRectSelect;
-
-    /// @brief firstcorner of the rectangle-selection
-    Position mySelCorner1;
-
-    /// @brief second corner of the rectangle-selection
-    Position mySelCorner2;
     // @}
 
     /// @brief a reference to the toolbar in myParent
@@ -606,18 +643,6 @@ private:
 
     /// @brief the previous edit mode before edit junction's shapes
     EditMode myPreviousEditMode;
-    /// @}
-
-    /// @name variables for testing mode
-    /// @{
-    /// @brief flag to enable or disable testing mode
-    bool myTestingMode;
-
-    /// @brief Width of viewNet in testing mode
-    int myTestingWidth;
-
-    /// @brief Height of viewNet in testing mode
-    int myTestingHeight;
     /// @}
 
     /// @brief set edit mode
