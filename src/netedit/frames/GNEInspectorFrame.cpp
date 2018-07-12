@@ -118,6 +118,9 @@ GNEInspectorFrame::GNEInspectorFrame(FXHorizontalFrame* horizontalFrameParent, G
     // Create GEO Parameters Editor
     myGEOAttributesEditor = new GEOAttributesEditor(this);
 
+    // create Generic parameters editor
+    myGenericParametersEditor = new GenericParametersEditor(this);
+
     // Create Netedit Attributes Editor
     myNeteditAttributesEditor = new NeteditAttributesEditor(this);
 
@@ -177,6 +180,7 @@ GNEInspectorFrame::inspectMultisection(const std::vector<GNEAttributeCarrier*>& 
     myAttributesEditor->hideAttributesEditor();
     myNeteditAttributesEditor->hideNeteditAttributesEditor();
     myGEOAttributesEditor->hideGEOAttributesEditor();
+    myGenericParametersEditor->hideGenericParametersEditor();
     myTemplateEditor->hideTemplateEditor();
     myACHierarchy->hideACHierarchy();
     // If vector of attribute Carriers contain data
@@ -208,6 +212,9 @@ GNEInspectorFrame::inspectMultisection(const std::vector<GNEAttributeCarrier*>& 
 
         // Show GEO Attributes Editor if we're inspecting elements with GEO Attributes
         myGEOAttributesEditor->showGEOAttributesEditor();
+
+        // show generic attributes editor
+        myGenericParametersEditor->showGenericParametersEditor();
 
         // If attributes correspond to an Edge, show template editor
         myTemplateEditor->showTemplateEditor();
