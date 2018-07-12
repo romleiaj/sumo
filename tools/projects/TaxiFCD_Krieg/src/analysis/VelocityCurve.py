@@ -18,8 +18,8 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from pylab import *
-from analysis.Taxi import *
+from pylab import axis, plot, show, subplot, subplots_adjust, xlabel, xticks, ylabel, yticks
+from analysis.Taxi import SOURCE_FCD, SOURCE_SIMFCD, SOURCE_VTYPE
 import util.Reader as reader
 
 # global Vars
@@ -29,7 +29,6 @@ WEE = True  # =withoutEmptyEdges decide which analysis file should be used
 def main():
     print("start program")
 
-    taxiId = '154_2'
     interval = 900
     plotCurve(interval)
 
@@ -41,11 +40,11 @@ def plotCurve(interval=10, taxiId=None):
     """plots the  velocity time-variation curve for a single taxi or averaged values of the hole day."""
     if taxiId is None:
         values, interval = getAveragedValues(interval)
-        legendText = ('reale FCD', 'sim. FCD', 'sim. FC-Rohdaten')
+        # legendText = ('reale FCD', 'sim. FCD', 'sim. FC-Rohdaten')
     else:
         values, starttime = getDataForTaxi(taxiId)
-        legendText = (
-            'reale FCD', 'sim. FCD', 'vtype', 'start: ' + str(starttime))
+        # legendText = (
+        #     'reale FCD', 'sim. FCD', 'vtype', 'start: ' + str(starttime))
     textsize = 16
 
     subplot(211)
@@ -143,7 +142,7 @@ def getAveragedValues(interval):
 
     # calc relative Error
     for i in range(len(fcdValues)):
-        if simFcdValues[i] == None or fcdValues[i] == None:
+        if simFcdValues[i] is None or fcdValues[i] is None:
             relErrorValues[i] = None
             absErrorValues[i] = None
         else:
@@ -151,7 +150,8 @@ def getAveragedValues(interval):
             absErr = simFcdValues[i] - fcdValues[i]
             relErrorValues[i] = absErr / float(fcdValues[i]) * 100
             absErrorValues[i] = absErr
-    return ([timeValues, fcdValues, simFcdValues, vtypeValues, fcdValuesNo, simFcdValuesNo, vtypeValuesNo, relErrorValues, absErrorValues], interval)
+    return ([timeValues, fcdValues, simFcdValues, vtypeValues, fcdValuesNo, simFcdValuesNo, vtypeValuesNo,
+            relErrorValues, absErrorValues], interval)
 
 
 # start the program

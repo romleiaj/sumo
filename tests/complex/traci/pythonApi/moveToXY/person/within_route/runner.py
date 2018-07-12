@@ -17,20 +17,19 @@
 from __future__ import print_function
 from __future__ import absolute_import
 import os
-import subprocess
 import sys
-import random
 sys.path.append(os.path.join(
     os.path.dirname(sys.argv[0]), "..", "..", "..", "..", "..", "..", "..", "tools"))
-import traci
+import traci  # noqa
 import sumolib  # noqa
 
 sumoBinary = sumolib.checkBinary('sumo')
-cmd = [sumoBinary,
+cmd = [
+    sumoBinary,
     "-n", "input_net2.net.xml",
     "-r", "input_routes.rou.xml",
     "--fcd-output", "fcd.xml",
-    "--no-step-log"] 
+    "--no-step-log"]
 traci.start(cmd)
 
 
@@ -45,18 +44,18 @@ s = step()
 x, y = traci.person.getPosition(p)
 print("s=%s x=%s y=%s" % (s, x, y))
 print("jumping backwards on the same edge")
-traci.person.moveToXY(p, "", x, y-10)
+traci.person.moveToXY(p, "", x, y - 10)
 s = step()
 x, y = traci.person.getPosition(p)
 print("s=%s x=%s y=%s" % (s, x, y))
 print("jumping forward to route edge")
-traci.person.moveToXY(p, "", x, y+60, angle=45)
+traci.person.moveToXY(p, "", x, y + 60, angle=45)
 s = step()
 x, y = traci.person.getPosition(p)
 print("s=%s x=%s y=%s" % (s, x, y))
 s = step()
 print("jumping backward to previous route edge")
-traci.person.moveToXY(p, "", x, y-80)
+traci.person.moveToXY(p, "", x, y - 80)
 s = step()
 x, y = traci.person.getPosition(p)
 print("s=%s x=%s y=%s" % (s, x, y))

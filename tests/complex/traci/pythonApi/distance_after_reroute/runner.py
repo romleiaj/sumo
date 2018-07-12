@@ -49,18 +49,17 @@ def main(args):
             print(traci.vehicle.getDistance('Stapler_00'))
             traci.vehicle.setRoute('Stapler_00', ('ed1', 'ed5'))
             print(traci.vehicle.getRoute('Stapler_00'))
-            assert(traci.vehicle.getRoute('Stapler_00')
-                   == ['ed0', 'ed1', 'ed5'])
+            assert(traci.vehicle.getRoute('Stapler_00') == ['ed0', 'ed1', 'ed5'])
             print(traci.vehicle.getDistance('Stapler_00'))
         if step == 122:
-            assert(traci.vehicle.getRoute('Stapler_00')
-                   == ['ed0', 'ed1', 'ed5'])
+            assert(traci.vehicle.getRoute('Stapler_00') == ['ed0', 'ed1', 'ed5'])
             print(traci.vehicle.getDistance('Stapler_00'))
             traci.vehicle.setRouteID('Stapler_00', "short")
             print(traci.vehicle.getRoute('Stapler_00'))
             print(traci.vehicle.getDistance('Stapler_00'))
     traci.close()
     sumoProcess.wait()
+
 
 if __name__ == "__main__":
     main(sys.argv[1:])

@@ -59,20 +59,6 @@ public:
     /// @brief Destructor
     ~GNEBusStop();
 
-    /**@brief writte additional element into a xml file
-     * @param[in] device device in which write parameters of additional element
-     */
-    void writeAdditional(OutputDevice& device) const;
-
-    /// @brief get string vector with the lines of the busStop
-    const std::vector<std::string>& getLines() const;
-
-    /// @brief generate Acces ID
-    std::string generateAccessID() const;
-
-    /// @brief
-    bool accessCanBeCreated(GNEEdge &edge) const;
-
     /// @name Functions related with geometry of element
     /// @{
     /// @brief update pre-computed geometry information
@@ -110,9 +96,6 @@ public:
      */
     bool isValid(SumoXMLAttr key, const std::string& value);
     /// @}
-
-    /// @brief add acces to this busStop
-    void addAccess(GNELane* lane, double pos, bool friendlyPos, double length);
 
 protected:
     /// @brief The list of lines that are assigned to this stop

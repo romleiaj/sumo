@@ -53,8 +53,8 @@
 // member method definitions
 // ===========================================================================
 
-GNEDetectorEntry::GNEDetectorEntry(GNEViewNet* viewNet, GNEDetectorE3* parent, GNELane* lane, double pos, bool friendlyPos, bool blockMovement) :
-    GNEDetector(parent->generateEntryID(), viewNet, GLO_DET_ENTRY, SUMO_TAG_DET_ENTRY, lane, pos, 0, "", friendlyPos, parent, blockMovement) {
+GNEDetectorEntry::GNEDetectorEntry(GNEViewNet* viewNet, GNEAdditional* parent, GNELane* lane, double pos, bool friendlyPos, bool blockMovement) :
+    GNEDetector(parent, viewNet, GLO_DET_ENTRY, SUMO_TAG_DET_ENTRY, lane, pos, 0, "", "", friendlyPos, blockMovement) {
 }
 
 
@@ -87,17 +87,7 @@ GNEDetectorEntry::updateGeometry() {
     myViewNet->getNet()->refreshElement(this);
 
     // update E3 parent Geometry
-    myAdditionalParent->updateGeometry();
-}
-
-
-void
-GNEDetectorEntry::writeAdditional(OutputDevice& device) const {
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_LANE);
-    writeAttribute(device, SUMO_ATTR_POSITION);
-    writeAttribute(device, SUMO_ATTR_FRIENDLY_POS);
-    device.closeTag();
+    myFirstAdditionalParent->updateGeometry();
 }
 
 
@@ -228,7 +218,7 @@ GNEDetectorEntry::getAttribute(SumoXMLAttr key) const {
         case GNE_ATTR_BLOCK_MOVEMENT:
             return toString(myBlockMovement);
         case GNE_ATTR_PARENT:
-            return myAdditionalParent->getID();
+            return myFirstAdditionalParent->getID();
         case GNE_ATTR_SELECTED:
             return toString(isAttributeCarrierSelected());
         default:
@@ -272,7 +262,7 @@ GNEDetectorEntry::isValid(SumoXMLAttr key, const std::string& value) {
         case GNE_ATTR_BLOCK_MOVEMENT:
             return canParse<bool>(value);
         case GNE_ATTR_PARENT:
-            return (myViewNet->getNet()->getAdditional(SUMO_TAG_E3DETECTOR, value) != nullptr);
+            return (myViewNet->getNet()->retrieveAdditional(SUMO_TAG_E3DETECTOR, value, false) != nullptr);
         case GNE_ATTR_SELECTED:
             return canParse<bool>(value);
         default:
@@ -299,7 +289,7 @@ GNEDetectorEntry::setAttribute(SumoXMLAttr key, const std::string& value) {
             myBlockMovement = parse<bool>(value);
             break;
         case GNE_ATTR_PARENT:
-            changeAdditionalParent(value);
+            changeFirstAdditionalParent(value);
             break;
         case GNE_ATTR_SELECTED:
             if(parse<bool>(value)) {

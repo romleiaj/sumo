@@ -38,63 +38,56 @@
 // ===========================================================================
 
 GNEClosingReroute::GNEClosingReroute(GNERerouterIntervalDialog* rerouterIntervalDialog) :
-    GNEAttributeCarrier(SUMO_TAG_CLOSING_REROUTE),
-    myRerouterIntervalParent(rerouterIntervalDialog->getEditedRerouterInterval()),
-    myClosedEdge(rerouterIntervalDialog->getEditedRerouterInterval()->getRerouterParent()->getEdgeChilds().at(0)),
-    myAllowedVehicles(getTagProperties(SUMO_TAG_CLOSING_LANE_REROUTE).getDefaultValue(SUMO_ATTR_ALLOW)),
-    myDisallowedVehicles(getTagProperties(SUMO_TAG_CLOSING_LANE_REROUTE).getDefaultValue(SUMO_ATTR_DISALLOW)) {
+    GNEAdditional(rerouterIntervalDialog->getEditedAdditional(), rerouterIntervalDialog->getEditedAdditional()->getViewNet(), GLO_CALIBRATOR, SUMO_TAG_CLOSING_REROUTE, "", false),
+    myClosedEdge(rerouterIntervalDialog->getEditedAdditional()->getFirstAdditionalParent()->getEdgeChilds().at(0)) {
+    // fill closing reroute interval with default values
+    setDefaultValues();
 }
 
 
-GNEClosingReroute::GNEClosingReroute(GNERerouterInterval* rerouterIntervalParent, GNEEdge* closedEdge, const std::string &allowedVehicles, const std::string &disallowedVehicles) :
-    GNEAttributeCarrier(SUMO_TAG_CLOSING_REROUTE),
-    myRerouterIntervalParent(rerouterIntervalParent),
+GNEClosingReroute::GNEClosingReroute(GNEAdditional* rerouterIntervalParent, GNEEdge* closedEdge, SVCPermissions permissions) :
+    GNEAdditional(rerouterIntervalParent, rerouterIntervalParent->getViewNet(), GLO_CALIBRATOR, SUMO_TAG_CLOSING_REROUTE, "", false),
     myClosedEdge(closedEdge),
-    myAllowedVehicles(allowedVehicles),
-    myDisallowedVehicles(disallowedVehicles) {
+    myPermissions(permissions) {
 }
 
 
 GNEClosingReroute::~GNEClosingReroute() {}
 
 
-void
-GNEClosingReroute::writeClosingReroute(OutputDevice& device) const {
-    // open closing reroute tag
-    device.openTag(getTag());
-    // write Lane ID
-    writeAttribute(device, SUMO_ATTR_ID);
-    // write Allowed vehicles
-    writeAttribute(device, SUMO_ATTR_ALLOW);
-    // write disallowed vehicles
-    writeAttribute(device, SUMO_ATTR_DISALLOW);
-    // close closing reroute tag
-    device.closeTag();
-}
-
-
-GNERerouterInterval*
-GNEClosingReroute::getRerouterIntervalParent() const {
-    return myRerouterIntervalParent;
+void 
+GNEClosingReroute::moveGeometry(const Position&, const Position&) {
+    // This additional cannot be moved
 }
 
 
 void 
-GNEClosingReroute::selectAttributeCarrier(bool) {
-    // this AC cannot be selected
+GNEClosingReroute::commitGeometryMoving(const Position&, GNEUndoList*) {
+    // This additional cannot be moved
 }
 
 
 void 
-GNEClosingReroute::unselectAttributeCarrier(bool) {
-    // this AC cannot be unselected
+GNEClosingReroute::updateGeometry() {
+    // Currently this additional doesn't own a Geometry
 }
 
 
-bool 
-GNEClosingReroute::isAttributeCarrierSelected() const {
-    // this AC doesn't own a select flag
-    return false;
+Position 
+GNEClosingReroute::getPositionInView() const {
+    return myFirstAdditionalParent->getPositionInView();
+}
+
+
+std::string 
+GNEClosingReroute::getParentName() const {
+    return myFirstAdditionalParent->getID();
+}
+
+
+void 
+GNEClosingReroute::drawGL(const GUIVisualizationSettings& /* s */) const {
+    // Currently this additional isn't drawn
 }
 
 
@@ -102,11 +95,15 @@ std::string
 GNEClosingReroute::getAttribute(SumoXMLAttr key) const {
     switch (key) {
         case SUMO_ATTR_ID:
+            return getAdditionalID();
+        case SUMO_ATTR_EDGE:
             return myClosedEdge->getID();
         case SUMO_ATTR_ALLOW:
-            return myAllowedVehicles;
+            return getVehicleClassNames(myPermissions);
         case SUMO_ATTR_DISALLOW:
-            return myDisallowedVehicles;
+            return getVehicleClassNames(invertPermissions(myPermissions));
+        case GNE_ATTR_PARENT:
+            return myFirstAdditionalParent->getID();
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }
@@ -120,6 +117,7 @@ GNEClosingReroute::setAttribute(SumoXMLAttr key, const std::string& value, GNEUn
     }
     switch (key) {
         case SUMO_ATTR_ID:
+        case SUMO_ATTR_EDGE:
         case SUMO_ATTR_ALLOW:
         case SUMO_ATTR_DISALLOW:
             undoList->p_add(new GNEChange_Attribute(this, key, value));
@@ -134,7 +132,9 @@ bool
 GNEClosingReroute::isValid(SumoXMLAttr key, const std::string& value) {
     switch (key) {
         case SUMO_ATTR_ID:
-            return (myRerouterIntervalParent->getRerouterParent()->getViewNet()->getNet()->retrieveEdge(value, false) != nullptr);
+            return isValidAdditionalID(value);
+        case SUMO_ATTR_EDGE:
+            return (myViewNet->getNet()->retrieveEdge(value, false) != nullptr);
         case SUMO_ATTR_ALLOW:
             return canParseVehicleClasses(value);
         case SUMO_ATTR_DISALLOW:
@@ -144,6 +144,18 @@ GNEClosingReroute::isValid(SumoXMLAttr key, const std::string& value) {
     }
 }
 
+
+std::string 
+GNEClosingReroute::getPopUpID() const {
+    return toString(getTag());
+}
+
+
+std::string 
+GNEClosingReroute::getHierarchyName() const {
+    return toString(getTag()) + ": " + myClosedEdge->getID();
+}
+
 // ===========================================================================
 // private
 // ===========================================================================
@@ -151,18 +163,18 @@ GNEClosingReroute::isValid(SumoXMLAttr key, const std::string& value) {
 void
 GNEClosingReroute::setAttribute(SumoXMLAttr key, const std::string& value) {
     switch (key) {
-        case SUMO_ATTR_ID: {
-            myClosedEdge = myRerouterIntervalParent->getRerouterParent()->getViewNet()->getNet()->retrieveEdge(value);
+        case SUMO_ATTR_ID:
+            changeAdditionalID(value);
             break;
-        }
-        case SUMO_ATTR_ALLOW: {
-            myAllowedVehicles = value;
+        case SUMO_ATTR_EDGE:
+            myClosedEdge = myViewNet->getNet()->retrieveEdge(value);
             break;
-        }
-        case SUMO_ATTR_DISALLOW: {
-            myAllowedVehicles = value;
+        case SUMO_ATTR_ALLOW:
+            myPermissions = parseVehicleClasses(value);
             break;
-        }
+        case SUMO_ATTR_DISALLOW:
+            myPermissions = invertPermissions(parseVehicleClasses(value));
+            break;
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }

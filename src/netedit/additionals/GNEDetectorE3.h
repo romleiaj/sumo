@@ -42,25 +42,15 @@ public:
      * @param[in] pos position (center) of the detector in the map
      * @param[in] freq the aggregation period the values the detector collects shall be summed up.
      * @param[in] filename The path to the output file
+     * @param[in] name E3 detector name
      * @param[in] timeThreshold The time-based threshold that describes how much time has to pass until a vehicle is recognized as halting
      * @param[in] speedThreshold The speed-based threshold that describes how slow a vehicle has to be to be recognized as halting
      * @param[in] block movement enable or disable additional movement  
      */
-    GNEDetectorE3(const std::string& id, GNEViewNet* viewNet, Position pos, double freq, const std::string& filename, const double timeThreshold, double speedThreshold, bool blockMovement);
+    GNEDetectorE3(const std::string& id, GNEViewNet* viewNet, Position pos, double freq, const std::string& filename, const std::string& name, const double timeThreshold, double speedThreshold, bool blockMovement);
 
-    /// @brief GNEDetectorE3 6Destructor
+    /// @brief GNEDetectorE3 Destructor
     ~GNEDetectorE3();
-
-    /**@brief writte additional element into a xml file
-     * @param[in] device device in which write parameters of additional element
-     */
-    void writeAdditional(OutputDevice& device) const;
-
-    /// @brief gererate a new ID for an Entry detector child
-    std::string generateEntryID();
-
-    /// @brief gererate a new ID for an Exit detector child
-    std::string generateExitID();
 
     /// @name Functions related with geometry of element
     /// @{
@@ -117,6 +107,12 @@ public:
      * @return true if the value is valid, false in other case
      */
     bool isValid(SumoXMLAttr key, const std::string& value);
+
+    /// @brief get PopPup ID (Used in AC Hierarchy)
+    std::string getPopUpID() const;
+
+    /// @brief get Hierarchy Name (Used in AC Hierarchy)
+    std::string getHierarchyName() const;
     /// @}
 
 protected:
@@ -136,6 +132,9 @@ protected:
     double mySpeedThreshold;
 
 private:
+    /// @brief check restriction with the number of childs
+    bool checkAdditionalChildRestriction() const;
+
     /// @brief set attribute after validation
     void setAttribute(SumoXMLAttr key, const std::string& value);
 

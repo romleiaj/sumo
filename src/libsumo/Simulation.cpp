@@ -48,15 +48,29 @@
 #include <libsumo/TraCIDefs.h>
 
 
-// ===========================================================================
-// member definitions
-// ===========================================================================
 namespace libsumo {
+// ===========================================================================
+// static member initializations
+// ===========================================================================
+SubscriptionResults Simulation::mySubscriptionResults;
+ContextSubscriptionResults Simulation::myContextSubscriptionResults;
+
+
+// ===========================================================================
+// static member definitions
+// ===========================================================================
 void
 Simulation::load(const std::vector<std::string>& args) {
-    XMLSubSys::init(); // this may be not good for multiple loads
+    close();
+    XMLSubSys::init();
     OptionsIO::setArgs(args);
     NLBuilder::init();
+}
+
+
+bool
+Simulation::isLoaded() {
+    return MSNet::hasInstance();
 }
 
 
@@ -74,52 +88,47 @@ Simulation::step(const SUMOTime time) {
 
 void
 Simulation::close() {
-	MSNet::getInstance()->closeSimulation(0);
-    delete MSNet::getInstance();
-	XMLSubSys::close();
-    SystemFrame::close();
+    if (MSNet::hasInstance()) {
+        MSNet::getInstance()->closeSimulation(0);
+        delete MSNet::getInstance();
+        XMLSubSys::close();
+        SystemFrame::close();
+    }
 }
 
 
-/* void
-Simulation::subscribe(int domID, const std::string& objID, SUMOTime beginTime, SUMOTime endTime, const std::vector<int>& vars) const {
+void
+Simulation::subscribe(const std::string& objID, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime) {
+    libsumo::Helper::subscribe(CMD_SUBSCRIBE_SIM_VARIABLE, objID, vars, beginTime, endTime);
 }
 
 void
-Simulation::subscribeContext(int domID, const std::string& objID, SUMOTime beginTime, SUMOTime endTime, int domain, double range, const std::vector<
-int>& vars) const {
-} */
-
-
-const Simulation::SubscribedValues
-Simulation::getSubscriptionResults() const {
-    return mySubscribedValues;
+Simulation::subscribeContext(const std::string& objID, int domain, double range, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime) {
+    libsumo::Helper::subscribe(CMD_SUBSCRIBE_SIM_CONTEXT, objID, vars, beginTime, endTime, domain, range);
 }
 
 
-const Simulation::TraCIValues
-Simulation::getSubscriptionResults(const std::string& objID) const {
-    if (mySubscribedValues.find(objID) != mySubscribedValues.end()) {
-        return mySubscribedValues.find(objID)->second;
-    } else {
-        return TraCIValues();
-    }
+const SubscriptionResults
+Simulation::getSubscriptionResults() {
+    return mySubscriptionResults;
 }
 
 
-const Simulation::SubscribedContextValues
-Simulation::getContextSubscriptionResults() const {
-    return mySubscribedContextValues;
+const TraCIResults
+Simulation::getSubscriptionResults(const std::string& objID) {
+    return mySubscriptionResults[objID];
 }
 
 
-const Simulation::SubscribedValues
-Simulation::getContextSubscriptionResults(const std::string& objID) const {
-    if (mySubscribedContextValues.find(objID) != mySubscribedContextValues.end()) {
-        return mySubscribedContextValues.find(objID)->second;
-    } else {
-        return SubscribedValues();
-    }
+const ContextSubscriptionResults
+Simulation::getContextSubscriptionResults() {
+    return myContextSubscriptionResults;
+}
+
+
+const SubscriptionResults
+Simulation::getContextSubscriptionResults(const std::string& objID) {
+    return myContextSubscriptionResults[objID];
 }
 
 

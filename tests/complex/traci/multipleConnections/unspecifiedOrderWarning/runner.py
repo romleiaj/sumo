@@ -21,14 +21,13 @@ import os
 import subprocess
 import sys
 import time
-import math
 from multiprocessing import Process, freeze_support
 
 sumoHome = os.path.abspath(
     os.path.join(os.path.dirname(sys.argv[0]), '..', '..', '..', '..', '..'))
 sys.path.append(os.path.join(sumoHome, "tools"))
 import sumolib  # noqa
-import traci
+import traci  # noqa
 
 PORT = sumolib.miscutils.getFreeSocketPort()
 DELTA_T = 1000
@@ -62,7 +61,7 @@ def traciLoop(port, traciEndTime, index, orderOdd):
             step += 1
         endTime = traci.simulation.getCurrentTime() / DELTA_T
         traci.close()
-    #~ except traci.FatalTraCIError as e:
+    # ~ except traci.FatalTraCIError as e:
     except Exception as e:
         time.sleep(orderTime * index)  # assure ordering of outputs
         sumoStop = True
@@ -81,7 +80,8 @@ def runSingle(sumoEndTime, traciEndTime, numClients, orderOdd=False):
     fdi.close()
     fdo.close()
     sumoProcess = subprocess.Popen(
-        "%s -v --num-clients %s -c used.sumocfg %s" % (sumoBinary, numClients, addOption), shell=True, stdout=sys.stdout)  # Alternate ordering
+        "%s -v --num-clients %s -c used.sumocfg %s" %
+        (sumoBinary, numClients, addOption), shell=True, stdout=sys.stdout)  # Alternate ordering
     procs = [Process(target=traciLoop, args=(PORT, traciEndTime, i + 1, orderOdd)) for i in range(numClients)]
     for p in procs:
         p.start()

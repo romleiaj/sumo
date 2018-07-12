@@ -62,24 +62,18 @@ GNEAttributeCarrier::TagValues::TagValues() :
     myIcon(ICON_EMPTY),
     myPositionListed(0),
     myParentTag(SUMO_TAG_NOTHING),
-    myMaxNumberOfChilds(0) {
+    myTagSynonym(SUMO_TAG_NOTHING) {
 }
 
 
-GNEAttributeCarrier::TagValues::TagValues(int tagProperty, int positionListed, GUIIcon icon, SumoXMLTag parentTag, int maxNumberOfChilds) :
+GNEAttributeCarrier::TagValues::TagValues(int tagProperty, int positionListed, GUIIcon icon, SumoXMLTag parentTag, SumoXMLTag tagSynonym) :
     myTagProperty(tagProperty),
     myIcon(icon),
     myPositionListed(positionListed),
     myParentTag(parentTag),
-    myMaxNumberOfChilds(maxNumberOfChilds){
+    myTagSynonym(tagSynonym) {
 }
 
-/*
-const std::map<SumoXMLAttr, GNEAttributeCarrier::AttributeValues> & 
-GNEAttributeCarrier::TagValues::getAttributeValues() const {
-    return myAttributeValues;
-}
-*/
 
 const std::string&
 GNEAttributeCarrier::TagValues::getDefaultValue(SumoXMLAttr attr) const {
@@ -100,12 +94,39 @@ GNEAttributeCarrier::TagValues::getPositionListed() const {
 
 
 void 
-GNEAttributeCarrier::TagValues::addAttribute(SumoXMLAttr attr, int attributeProperty, const std::string &definition, const std::string &defaultValue, std::vector<std::string> discreteValues) {
-    if(myAttributeValues.count(attr) == 0) {
-        myAttributeValues[attr] = AttributeValues(attributeProperty, (int)myAttributeValues.size(), definition, defaultValue, discreteValues);
-    } else {
+GNEAttributeCarrier::TagValues::addAttribute(SumoXMLAttr attr, int attributeProperty, const std::string &definition, const std::string &defaultValue, std::vector<std::string> discreteValues, SumoXMLAttr synonym) {
+    if(isAttributeDeprecated(attr)) {
+        throw ProcessError("Attribute '" + toString(attr) + "' is deprecated and cannot be inserted");
+    } else if(myAttributeValues.count(attr) != 0) {
         throw ProcessError("Attribute '" + toString(attr) + "' already inserted");
+    } else {
+        myAttributeValues[attr] = AttributeValues(attributeProperty, (int)myAttributeValues.size(), definition, defaultValue, discreteValues, synonym);
     }
+}
+
+
+void 
+GNEAttributeCarrier::TagValues::addAttribute(SumoXMLAttr attr, int attributeProperty, const std::string &definition, const std::string &defaultValue, SumoXMLAttr synonym) {
+    if(isAttributeDeprecated(attr)) {
+        throw ProcessError("Attribute '" + toString(attr) + "' is deprecated and cannot be inserted");
+    } else if(myAttributeValues.count(attr) != 0) {
+        throw ProcessError("Attribute '" + toString(attr) + "' already inserted");
+    } else {
+        myAttributeValues[attr] = AttributeValues(attributeProperty, (int)myAttributeValues.size(), definition, defaultValue, std::vector<std::string>(), synonym);
+    }
+}
+
+
+void 
+GNEAttributeCarrier::TagValues::addDeprecatedAttribute(SumoXMLAttr attr) {
+    // Check that attribute wasn't already inserted
+    for (auto i : myAttributeValues) {
+        if (i.first == attr) {
+            throw ProcessError("Attribute '" + toString(attr) + "' is deprecated but was inserted in list of attributes");
+        }
+    }
+    // add it into myDeprecatedAttributes
+    myDeprecatedAttributes.push_back(attr);
 }
 
 
@@ -114,6 +135,13 @@ GNEAttributeCarrier::TagValues::getAttribute(SumoXMLAttr attr) const {
     if(myAttributeValues.count(attr) != 0) {
         return myAttributeValues.at(attr);
     } else {
+        // check if we're try to loading an synonym
+        for (auto i : myAttributeValues) {
+            if(i.second.hasAttrSynonym() && i.second.getAttrSynonym() == attr) {
+                return myAttributeValues.at(i.first);
+            }
+        }
+        // throw error if these attribute doesn't exist
         throw ProcessError("Attribute '" + toString(attr) + "' doesn't exist");
     }
 }
@@ -145,13 +173,21 @@ GNEAttributeCarrier::TagValues::getGUIIcon() const {
 
 SumoXMLTag 
 GNEAttributeCarrier::TagValues::getParentTag() const {
-    return myParentTag;
+    if(hasParent()) {
+        return myParentTag;
+    } else {
+        throw ProcessError("Tag doesn't have parent");
+    }
 }
 
 
-int
-GNEAttributeCarrier::TagValues::getMaxNumberOfChilds() const {
-    return myMaxNumberOfChilds;
+SumoXMLTag 
+GNEAttributeCarrier::TagValues::getTagSynonym() const {
+    if(hasTagSynonym()) {
+        return myTagSynonym;
+    } else {
+        throw ProcessError("Tag doesn't have synonym");
+    }
 }
 
 
@@ -174,8 +210,14 @@ GNEAttributeCarrier::TagValues::isAdditional() const {
 
 
 bool 
-GNEAttributeCarrier::TagValues::isInternal() const {
-    return (myTagProperty & TAGPROPERTY_INTERNAL) != 0;
+GNEAttributeCarrier::TagValues::isDrawable() const {
+    return (myTagProperty & TAGPROPERTY_DRAWABLE) != 0;
+}
+
+
+bool 
+GNEAttributeCarrier::TagValues::isSelectable() const {
+    return (myTagProperty & TAGPROPERTY_SELECTABLE) != 0;
 }
 
 
@@ -234,20 +276,44 @@ GNEAttributeCarrier::TagValues::hasParent() const {
 
 
 bool 
+GNEAttributeCarrier::TagValues::hasTagSynonym() const {
+    return (myTagProperty & TAGPROPERTY_SYNONYM) != 0;
+}
+
+
+bool 
 GNEAttributeCarrier::TagValues::hasDialog() const {
     return (myTagProperty & TAGPROPERTY_DIALOG) != 0;
 }
 
 
 bool 
-GNEAttributeCarrier::TagValues::hasLimitedNumberOfChilds() const {
-    return (myTagProperty & TAGPROPERTY_LIMITEDCHILDS) != 0;
+GNEAttributeCarrier::TagValues::hasMinimumNumberOfChilds() const {
+    return (myTagProperty & TAGPROPERTY_MINIMUMCHILDS) != 0;
 }
 
 
 bool 
 GNEAttributeCarrier::TagValues::canBeReparent() const {
     return (myTagProperty & TAGPROPERTY_REPARENT) != 0;
+}
+
+
+bool
+GNEAttributeCarrier::TagValues::canAutomaticSortChilds() const {
+    return (myTagProperty & TAGPROPERTY_AUTOMATICSORTING) != 0;
+}
+
+
+bool
+GNEAttributeCarrier::TagValues::canWriteChildsSeparate() const {
+    return (myTagProperty & TAGPROPERTY_WRITECHILDSSEPARATE) != 0;
+}
+
+
+bool 
+GNEAttributeCarrier::TagValues::isAttributeDeprecated(SumoXMLAttr attr) const {
+    return (std::find(myDeprecatedAttributes.begin(), myDeprecatedAttributes.end(), attr) != myDeprecatedAttributes.end());
 }
 
 // ---------------------------------------------------------------------------
@@ -258,15 +324,17 @@ GNEAttributeCarrier::AttributeValues::AttributeValues() :
     myAttributeProperty(ATTRPROPERTY_STRING),
     myPositionListed(0), 
     myDefinition(""),
-    myDefaultValue("") {}
+    myDefaultValue(""),
+    myAttrSynonym(SUMO_ATTR_NOTHING) {}
 
 
-GNEAttributeCarrier::AttributeValues::AttributeValues(int attributeProperty, int positionListed, const std::string &definition, const std::string &defaultValue, const std::vector<std::string> &discreteValues) :
+GNEAttributeCarrier::AttributeValues::AttributeValues(int attributeProperty, int positionListed, const std::string &definition, const std::string &defaultValue, const std::vector<std::string> &discreteValues, SumoXMLAttr synonym) :
     myAttributeProperty(attributeProperty),
     myPositionListed(positionListed), 
     myDefinition(definition),
     myDefaultValue(defaultValue),
-    myDiscreteValues(discreteValues) {
+    myDiscreteValues(discreteValues),
+    myAttrSynonym(synonym) {
     // Check that color attributes always owns an default value
     if(isColor() && myDefaultValue.empty()) {
         throw FormatException("Color attributes must own always a default color");
@@ -371,9 +439,25 @@ GNEAttributeCarrier::AttributeValues::getDiscreteValues() const {
 }
 
 
+SumoXMLAttr
+GNEAttributeCarrier::AttributeValues::getAttrSynonym() const {
+    if(hasAttrSynonym()) {
+        return myAttrSynonym;
+    } else {
+        throw ProcessError("Attr doesn't have synonym");
+    }
+}
+
+
 bool 
 GNEAttributeCarrier::AttributeValues::hasDefaultValue() const {
     return (myAttributeProperty & ATTRPROPERTY_DEFAULTVALUE) != 0;
+}
+
+
+bool 
+GNEAttributeCarrier::AttributeValues::hasAttrSynonym() const {
+    return (myAttributeProperty & ATTRPROPERTY_SYNONYM) != 0;
 }
 
 
@@ -424,30 +508,48 @@ GNEAttributeCarrier::AttributeValues::isPositive() const {
     return (myAttributeProperty & ATTRPROPERTY_POSITIVE) != 0;
 }
 
+
+bool 
+GNEAttributeCarrier::AttributeValues::isntZero() const {
+    return (myAttributeProperty & ATTRPROPERTY_NOTZERO) != 0;
+}
+
+
 bool 
 GNEAttributeCarrier::AttributeValues::isColor() const {
     return (myAttributeProperty & ATTRPROPERTY_COLOR) != 0;
 }
+
 
 bool 
 GNEAttributeCarrier::AttributeValues::isFilename() const {
     return (myAttributeProperty & ATTRPROPERTY_FILENAME) != 0;
 }
 
+
 bool 
 GNEAttributeCarrier::AttributeValues::isVClass() const {
     return (myAttributeProperty & ATTRPROPERTY_VCLASS) != 0;
 }
+
+
+bool 
+GNEAttributeCarrier::AttributeValues::isSVCPermission() const {
+    return ((myAttributeProperty & ATTRPROPERTY_LIST) != 0) && ((myAttributeProperty & ATTRPROPERTY_VCLASS) != 0);
+}
+
 
 bool 
 GNEAttributeCarrier::AttributeValues::isList() const {
     return (myAttributeProperty & ATTRPROPERTY_LIST) != 0;
 }
 
+
 bool 
 GNEAttributeCarrier::AttributeValues::isUnique() const {
     return (myAttributeProperty & ATTRPROPERTY_UNIQUE) != 0;
 }
+
 
 bool 
 GNEAttributeCarrier::AttributeValues::isOptional() const {
@@ -464,6 +566,12 @@ GNEAttributeCarrier::AttributeValues::isDiscrete() const {
 bool 
 GNEAttributeCarrier::AttributeValues::isCombinable() const {
     return (myAttributeProperty & ATTRPROPERTY_COMBINABLE) != 0;
+}
+
+
+bool 
+GNEAttributeCarrier::AttributeValues::isNonEditable() const {
+    return (myAttributeProperty & ATTRPROPERTY_NONEDITABLE) != 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -704,6 +812,16 @@ GNEAttributeCarrier::isValidID(const std::string& value) {
 
 
 bool
+GNEAttributeCarrier::isValidName(const std::string& value) {
+    if(value.size() == 0) {
+        return true;
+    } else {
+        return value.find_first_of("\t\n\r@$%^&/|\\{}*'\";:<>") == std::string::npos;
+    }
+}
+
+
+bool
 GNEAttributeCarrier::isValidFilename(const std::string& value) {
     // @note Only characteres that aren't permited in a file path or belong to XML sintax
     return (value.find_first_of("\t\n\r@$%^&|\\{}*'\";:<>") == std::string::npos);
@@ -729,7 +847,7 @@ GNEAttributeCarrier::getTagProperties(SumoXMLTag tag) {
 
 
 std::vector<SumoXMLTag>
-GNEAttributeCarrier::allowedTags(bool includingInternals) {
+GNEAttributeCarrier::allowedTags(bool onlyDrawables) {
     std::vector<SumoXMLTag> allTags;
     // define on first access
     if (myAllowedTags.size() == 0) {
@@ -737,7 +855,7 @@ GNEAttributeCarrier::allowedTags(bool includingInternals) {
     }
     // fill all tags
     for (auto i : myAllowedTags) {
-        if (includingInternals || !i.second.isInternal()) {
+        if (!onlyDrawables || i.second.isDrawable()) {
             allTags.push_back(i.first);
         }
     }
@@ -746,7 +864,7 @@ GNEAttributeCarrier::allowedTags(bool includingInternals) {
 
 
 std::vector<SumoXMLTag>
-GNEAttributeCarrier::allowedNetElementsTags(bool includingInternals) {
+GNEAttributeCarrier::allowedNetElementsTags(bool onlyDrawables) {
     std::vector<SumoXMLTag> netElementTags;
     // define on first access
     if (myAllowedTags.size() == 0) {
@@ -754,7 +872,7 @@ GNEAttributeCarrier::allowedNetElementsTags(bool includingInternals) {
     }
     // fill netElements tags
     for (auto i : myAllowedTags) {
-        if (i.second.isNetElement() && (includingInternals || !i.second.isInternal())) {
+        if (i.second.isNetElement() && (!onlyDrawables || i.second.isDrawable())) {
             netElementTags.push_back(i.first);
         }
     }
@@ -763,7 +881,7 @@ GNEAttributeCarrier::allowedNetElementsTags(bool includingInternals) {
 
 
 std::vector<SumoXMLTag>
-GNEAttributeCarrier::allowedAdditionalTags(bool includingInternals) {
+GNEAttributeCarrier::allowedAdditionalTags(bool onlyDrawables) {
     std::vector<SumoXMLTag> additionalTags;
     // define on first access
     if (myAllowedTags.size() == 0) {
@@ -771,7 +889,7 @@ GNEAttributeCarrier::allowedAdditionalTags(bool includingInternals) {
     }
     // fill additional tags
     for (auto i : myAllowedTags) {
-        if (i.second.isAdditional() && (includingInternals || !i.second.isInternal())) {
+        if (i.second.isAdditional() && (!onlyDrawables || i.second.isDrawable())) {
             additionalTags.push_back(i.first);
         }
     }
@@ -780,7 +898,7 @@ GNEAttributeCarrier::allowedAdditionalTags(bool includingInternals) {
 
 
 std::vector<SumoXMLTag>
-GNEAttributeCarrier::allowedShapeTags(bool includingInternals) {
+GNEAttributeCarrier::allowedShapeTags(bool onlyDrawables) {
     std::vector<SumoXMLTag> shapeTags;
     // define on first access
     if (myAllowedTags.size() == 0) {
@@ -788,7 +906,7 @@ GNEAttributeCarrier::allowedShapeTags(bool includingInternals) {
     }
     // fill shape tags
     for (auto i : myAllowedTags) {
-        if (i.second.isShape() && (includingInternals || !i.second.isInternal())) {
+        if (i.second.isShape() && (onlyDrawables || i.second.isDrawable())) {
             shapeTags.push_back(i.first);
         }
     }
@@ -882,22 +1000,6 @@ GNEAttributeCarrier::getCircleResolution(const GUIVisualizationSettings& setting
 
 
 void 
-GNEAttributeCarrier::writeAttribute(OutputDevice& device, SumoXMLAttr key) const {
-    // obtain attribute property (only for improve code legibility)
-    const auto &attrValue = GNEAttributeCarrier::getTagProperties(getTag()).getAttribute(key);
-    std::string attribute = getAttribute(key);
-    if(attrValue.isOptional()) {
-        // only write optional attributes (i.e attributes with default value) if are differents
-        if(attrValue.getDefaultValue() != attribute) {
-            device.writeAttr(key, attribute);
-        }
-    } else {
-        device.writeAttr(key, attribute);
-    }
-}
-
-
-void 
 GNEAttributeCarrier::fillAttributeCarriers() {
     const OptionsCont& oc = OptionsCont::getOptions();
     // obtain Node Types except NODETYPE_DEAD_END_DEPRECATED
@@ -906,10 +1008,8 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     // fill all ACs
     SumoXMLTag currentTag = SUMO_TAG_EDGE;
     {
-        // position in attribute list
-        int pos = 0;
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT, 1, ICON_EDGE);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE, 1, ICON_EDGE);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -986,12 +1086,12 @@ GNEAttributeCarrier::fillAttributeCarriers() {
         myAllowedTags[currentTag].addAttribute(GNE_ATTR_BIDIR,
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE, // virtual attribute to check of this edge is part of a bidirectional railway
             "Enable or disable bidireccional edge", 
-            "false");
+            "0");
     }
     currentTag = SUMO_TAG_JUNCTION;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT, 2, ICON_JUNCTION);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE, 2, ICON_JUNCTION);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1031,7 +1131,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_LANE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT, 3, ICON_LANE);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE, 3, ICON_LANE);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1076,7 +1176,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_CROSSING;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT, 4, ICON_CROSSING);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE, 4, ICON_CROSSING);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_NONEDITABLE,
@@ -1110,7 +1210,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_CONNECTION;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT, 5, ICON_CONNECTION);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_NETELEMENT | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE, 5, ICON_CONNECTION);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FROM,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_NONEDITABLE,
@@ -1164,7 +1264,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_BUS_STOP;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 10, ICON_BUSSTOP, SUMO_TAG_NOTHING);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 10, ICON_BUSSTOP);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1184,7 +1284,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
             ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "Name of bus stop", 
+            "Name of " + toString(currentTag), 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FRIENDLY_POS,
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
@@ -1198,7 +1298,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_ACCESS;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT | TAGPROPERTY_BLOCKMOVEMENT, 11, ICON_BUSSTOP /* temporal */, SUMO_TAG_BUS_STOP);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_PARENT | TAGPROPERTY_BLOCKMOVEMENT, 11, ICON_ACCESS, SUMO_TAG_BUS_STOP);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_LANE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1220,7 +1320,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_CONTAINER_STOP;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 12, ICON_CONTAINERSTOP);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 12, ICON_CONTAINERSTOP);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1240,7 +1340,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
             ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "Name of Container Stop", 
+            "Name of " + toString(currentTag), 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FRIENDLY_POS,
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
@@ -1254,7 +1354,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_CHARGING_STATION;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 13, ICON_CHARGINGSTATION);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 13, ICON_CHARGINGSTATION);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1274,7 +1374,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
             ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "Name of Charging Station", 
+            "Name of " + toString(currentTag), 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FRIENDLY_POS,
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
@@ -1300,7 +1400,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_PARKING_AREA;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 14, ICON_PARKINGAREA);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_STOPPINGPLACE | TAGPROPERTY_BLOCKMOVEMENT, 14, ICON_PARKINGAREA);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1315,8 +1415,12 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "The begin position on the lane (the lower position on the lane) in meters", 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ENDPOS,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_FLOAT | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The end position on the lane (the higher position on the lane) in meters, must be larger than startPos by more than 0.1m", 
+            "");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ROADSIDE_CAPACITY,
             ATTRPROPERTY_INT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
@@ -1326,10 +1430,6 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "If set, no error will be reported if element is placed behind the lane. Instead,it will be placed 0.1 meters from the lanes end or at position 0.1, if the position was negative and larger than the lanes length after multiplication with - 1", 
             "0");
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "Name of Parking Area", 
-            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_WIDTH,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The width of the road-side parking spaces", 
@@ -1346,7 +1446,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_PARKING_SPACE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT | TAGPROPERTY_REPARENT | TAGPROPERTY_BLOCKMOVEMENT, 15, ICON_PARKINGSPACE, SUMO_TAG_PARKING_AREA);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_PARENT | TAGPROPERTY_REPARENT | TAGPROPERTY_BLOCKMOVEMENT, 15, ICON_PARKINGSPACE, SUMO_TAG_PARKING_AREA);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_X,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_UNIQUE,
@@ -1363,7 +1463,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_WIDTH,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The width of the road-side parking spaces", 
-            "3.2");
+            "3.20");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_LENGTH,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The length of the road-side parking spaces", 
@@ -1371,12 +1471,12 @@ GNEAttributeCarrier::fillAttributeCarriers() {
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ANGLE,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_ANGLE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The angle of the road-side parking spaces relative to the lane angle, positive means clockwise", 
-            "0");
+            "0.00");
     }
     currentTag = SUMO_TAG_E1DETECTOR;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 20, ICON_E1);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 20, ICON_E1);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1394,12 +1494,16 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
             "The aggregation period the values the detector collects shall be summed up", 
             "900.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE,
             "The path to the output file", 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_VTYPES,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_VCLASS | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "Space separated list of vehicle type ids to consider", 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FRIENDLY_POS,
@@ -1410,7 +1514,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_E2DETECTOR;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 21, ICON_E2);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 21, ICON_E2);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1432,6 +1536,10 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
             "The aggregation period the values the detector collects shall be summed up", 
             "900.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The path to the output file", 
@@ -1460,7 +1568,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_E3DETECTOR;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 22, ICON_E3);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_MINIMUMCHILDS | TAGPROPERTY_AUTOMATICSORTING, 22, ICON_E3);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1474,6 +1582,10 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
             "The aggregation period the values the detector collects shall be summed up", 
             "900.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE,
             "The path to the output file", 
@@ -1490,7 +1602,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_DET_ENTRY;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DETECTOR | TAGPROPERTY_PARENT | TAGPROPERTY_REPARENT | TAGPROPERTY_BLOCKMOVEMENT, 23, ICON_E3ENTRY, SUMO_TAG_E3DETECTOR);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DETECTOR | TAGPROPERTY_PARENT | TAGPROPERTY_REPARENT | TAGPROPERTY_BLOCKMOVEMENT, 23, ICON_E3ENTRY, SUMO_TAG_E3DETECTOR);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_LANE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1508,7 +1620,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_DET_EXIT;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DETECTOR | TAGPROPERTY_PARENT | TAGPROPERTY_REPARENT | TAGPROPERTY_BLOCKMOVEMENT, 24, ICON_E3EXIT, SUMO_TAG_E3DETECTOR);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DETECTOR | TAGPROPERTY_PARENT | TAGPROPERTY_REPARENT | TAGPROPERTY_BLOCKMOVEMENT, 24, ICON_E3EXIT, SUMO_TAG_E3DETECTOR);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_LANE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1526,7 +1638,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_INSTANT_INDUCTION_LOOP;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 25, ICON_E1INSTANT);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 25, ICON_E1INSTANT);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1540,17 +1652,13 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_UNIQUE,
             "The position on the lane the detector shall be laid on in meters. The position must be a value between -1*lane's length and the lane's length", 
             "");
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FREQUENCY,
-            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
-            "The aggregation period the values the detector collects shall be summed up", 
-            "900.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE,
             "The path to the output file", 
-            "");
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_VTYPES,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_VCLASS | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "Space separated list of vehicle type ids to consider", 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FRIENDLY_POS,
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
@@ -1560,7 +1668,9 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_VSS;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_DIALOG, 30, ICON_VARIABLESPEEDSIGN);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_DIALOG, 30, ICON_VARIABLESPEEDSIGN);
+        // set "file" as deprecated attribute
+        myAllowedTags[currentTag].addDeprecatedAttribute(SUMO_ATTR_FILE);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE,
@@ -1574,15 +1684,15 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_STRING | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE,
             "list of lanes of Variable Speed Sign", 
             "");
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "The path to the output file", 
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
             "");
     }
     currentTag = SUMO_TAG_STEP;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_INTERNAL, 31, ICON_STEP);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 31, ICON_VSSSTEP, SUMO_TAG_VSS);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_TIME,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME,
@@ -1596,7 +1706,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_CALIBRATOR;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DIALOG, 40, ICON_CALIBRATOR);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DIALOG, 40, ICON_CALIBRATOR);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1614,6 +1724,10 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The aggregation interval in which to calibrate the flows. default is step-length", 
             "1.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ROUTEPROBE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The id of the routeProbe element from which to determine the route distribution for generated vehicles", 
@@ -1626,7 +1740,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_LANECALIBRATOR;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DIALOG, 41, ICON_CALIBRATOR);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_SYNONYM | TAGPROPERTY_DIALOG, 41, ICON_CALIBRATOR, SUMO_TAG_NOTHING, SUMO_TAG_CALIBRATOR);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1644,6 +1758,10 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The aggregation interval in which to calibrate the flows. default is step-length", 
             "100.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ROUTEPROBE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The id of the routeProbe element from which to determine the route distribution for generated vehicles", 
@@ -1656,18 +1774,14 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_FLOW;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT | TAGPROPERTY_INTERNAL, 42, ICON_EMPTY /* temporal */, SUMO_TAG_CALIBRATOR);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 42, ICON_FLOW, SUMO_TAG_CALIBRATOR);
         // set values of attributes
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
-            "The id of the vehicle type to use for this vehicle", 
-            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_TYPE,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE,
             "The id of the vehicle type to use for this vehicle", 
             DEFAULT_VTYPE_ID);
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ROUTE,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
             "The id of the route the vehicle shall drive along", 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_VEHSPERHOUR,
@@ -1685,7 +1799,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_BEGIN,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
             "First vehicle departure time",  
-            "0");
+            "0.00");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_END,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
             "End of departure interval", 
@@ -1742,7 +1856,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_ROUTE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT | TAGPROPERTY_INTERNAL, 43, ICON_EMPTY /* temporal */, SUMO_TAG_CALIBRATOR);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL, 43, ICON_ROUTE);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1760,7 +1874,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_REROUTER;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_DIALOG, 50, ICON_REROUTER);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_DIALOG | TAGPROPERTY_WRITECHILDSSEPARATE, 50, ICON_REROUTER);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1771,9 +1885,13 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "An edge id or a list of edge ids where vehicles shall be rerouted", 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_POSITION,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_POSITION | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_POSITION | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "X,Y position in editor (Only used in NETEDIT)", 
             "0,0"); // virtual attribute from the combination of the actually attributes SUMO_ATTR_X, SUMO_ATTR_Y
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The path to the definition file (alternatively, the intervals may defined as children of the rerouter)", 
@@ -1785,7 +1903,11 @@ GNEAttributeCarrier::fillAttributeCarriers() {
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_HALTING_TIME_THRESHOLD,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The waiting time threshold (in s) that must be reached to activate rerouting (default -1 which disables the threshold)", 
-            "0");
+            "0.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_VTYPES,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "The list of vehicle types that shall be affected by this rerouter (empty to affect all types)",
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_OFF,
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "Whether the router should be inactive initially (and switched on in the gui)", 
@@ -1794,7 +1916,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_INTERVAL;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_INTERNAL | TAGPROPERTY_PARENT, 51, ICON_EMPTY, SUMO_TAG_REROUTER);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 51, ICON_REROUTERINTERVAL, SUMO_TAG_REROUTER);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_BEGIN,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
@@ -1808,16 +1930,17 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_CLOSING_REROUTE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_INTERNAL | TAGPROPERTY_PARENT, 52, ICON_REROUTER, SUMO_TAG_INTERVAL);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 52, ICON_CLOSINGREROUTE, SUMO_TAG_INTERVAL);
         // set values of attributes
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_EDGE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_SYNONYM,
             "Edge ID", 
-            "");
+            "",
+            SUMO_ATTR_ID);
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ALLOW,
             ATTRPROPERTY_VCLASS | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_COMBINABLE | ATTRPROPERTY_OPTIONAL,
             "allowed vehicles", 
-            "all"); 
+            ""); 
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_DISALLOW,
             ATTRPROPERTY_VCLASS | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_COMBINABLE | ATTRPROPERTY_OPTIONAL,
             "disallowed vehicles", 
@@ -1826,16 +1949,17 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_CLOSING_LANE_REROUTE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_INTERNAL | TAGPROPERTY_PARENT, 53, ICON_REROUTER, SUMO_TAG_INTERVAL);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 53, ICON_CLOSINGLANEREROUTE, SUMO_TAG_INTERVAL);
         // set values of attributes
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_LANE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_SYNONYM,
             "Lane ID", 
-            "");
+            "",
+            SUMO_ATTR_ID);
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ALLOW,
             ATTRPROPERTY_VCLASS | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_COMBINABLE | ATTRPROPERTY_OPTIONAL,
             "allowed vehicles", 
-            "all");
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_DISALLOW,
             ATTRPROPERTY_VCLASS | ATTRPROPERTY_LIST | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_COMBINABLE | ATTRPROPERTY_OPTIONAL,
             "disallowed vehicles", 
@@ -1844,12 +1968,13 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_DEST_PROB_REROUTE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_INTERNAL | TAGPROPERTY_PARENT, 54, ICON_EMPTY, SUMO_TAG_INTERVAL);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 54, ICON_DESTPROBREROUTE, SUMO_TAG_INTERVAL);
         // set values of attributes
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_EDGE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_SYNONYM,
             "Edge ID", 
-            "");
+            "",
+            SUMO_ATTR_ID);
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_PROB,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_PROBABILITY | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "probability", 
@@ -1858,26 +1983,32 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_PARKING_ZONE_REROUTE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_INTERNAL | TAGPROPERTY_PARENT, 55, ICON_EMPTY, SUMO_TAG_INTERVAL);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 55, ICON_PARKINGZONEREROUTE, SUMO_TAG_INTERVAL);
         // set values of attributes
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_PARKING,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_SYNONYM,
             "ParkingArea ID", 
-            "");
+            "",
+            SUMO_ATTR_ID);
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_PROB,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_PROBABILITY | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "probability", 
             "1.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_VISIBLE,
+            ATTRPROPERTY_BOOL | ATTRPROPERTY_OPTIONAL | ATTRPROPERTY_DEFAULTVALUE,
+            "Enable or disable visibility for parking area reroutes", 
+            "1");
     }
     currentTag = SUMO_TAG_ROUTE_PROB_REROUTE; 
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_INTERNAL, 56, ICON_EMPTY, SUMO_TAG_INTERVAL);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 56, ICON_ROUTEPROBREROUTE, SUMO_TAG_INTERVAL);
         // set values of attributes
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ROUTE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_SYNONYM,
             "Route", 
-            "");
+            "",
+            SUMO_ATTR_ID);
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_PROB,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_PROBABILITY | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "probability", 
@@ -1886,7 +2017,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_ROUTEPROBE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL, 60, ICON_ROUTEPROBE);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE, 60, ICON_ROUTEPROBE);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1897,9 +2028,13 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "The id of an edge in the simulation network", 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FREQUENCY,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
             "The frequency in which to report the distribution", 
             "3600");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
             ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE,
             "The file for generated output", 
@@ -1912,7 +2047,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_VAPORIZER;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL, 70, ICON_VAPORIZER);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE, 70, ICON_VAPORIZER);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1926,11 +2061,15 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE,
             "End Time", 
             "3600.00");
+        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_NAME,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            "Name of " + toString(currentTag), 
+            "");
     }
     currentTag = SUMO_TAG_VTYPE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT | TAGPROPERTY_INTERNAL, 80, ICON_EMPTY /* temporal */);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_PARENT, 80, ICON_VTYPE);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1945,7 +2084,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "The deceleration ability of vehicles of this type [m/s^2]", 
             "4.50");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_SIGMA,
-            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_FLOAT | ATTRPROPERTY_PROBABILITY | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "Car-following model parameter", 
             "0.50");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_TAU,
@@ -2011,38 +2150,38 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "The model used for car following", 
             "Krauss");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_PERSON_CAPACITY,
-            ATTRPROPERTY_INT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE| ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_INT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The number of persons (excluding an autonomous driver) the vehicle can transport", 
             "4");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_CONTAINER_CAPACITY,
-            ATTRPROPERTY_INT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE| ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_INT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The number of containers the vehicle can transport", 
             "0");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_BOARDING_DURATION,
-            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE| ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The time required by a person to board the vehicle", 
             "0.50");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_LOADING_DURATION,
-            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME| ATTRPROPERTY_DEFAULTVALUE| ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME| ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The time required to load a container onto the vehicle", 
             "90.00");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_LATALIGNMENT,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The preferred lateral alignment when using the sublane-model", 
             "center");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_MINGAP_LAT,
-            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The minimum lateral gap at a speed difference of 50km/h when using the sublane-model", 
             "0.12");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_MAXSPEED_LAT,
-            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The maximum lateral speed when using the sublane-model", 
             "1.00");
     }
     currentTag = SUMO_TAG_POLY;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_SHAPE | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_BLOCKSHAPE | TAGPROPERTY_CLOSESHAPE | TAGPROPERTY_GEOSHAPE, 100, ICON_LOCATEPOLY /* temporal */);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_SHAPE | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_BLOCKSHAPE | TAGPROPERTY_CLOSESHAPE | TAGPROPERTY_GEOSHAPE, 100, ICON_LOCATEPOLY /* temporal */);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -2065,16 +2204,16 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "The layer in which the polygon lies", 
             toString(Shape::DEFAULT_LAYER));
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_TYPE,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE| ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "A typename for the polygon", 
             toString(Shape::DEFAULT_TYPE));
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_IMGFILE,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE| ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "A bitmap to use for rendering this polygon", 
             toString(Shape::DEFAULT_IMG_FILE));
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_RELATIVEPATH,
             ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "Enable or disbale use image file as a relative path", 
+            "Enable or disable use image file as a relative path", 
             toString(Shape::DEFAULT_RELATIVEPATH));
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ANGLE,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_ANGLE | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
@@ -2084,7 +2223,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_POI;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_SHAPE | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_GEOPOSITION, 110, ICON_LOCATEPOI /* temporal */);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_SHAPE | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_BLOCKMOVEMENT | TAGPROPERTY_GEOPOSITION, 110, ICON_LOCATEPOI /* temporal */);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -2130,7 +2269,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     currentTag = SUMO_TAG_POILANE;
     {
         // set values of tag
-        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_SHAPE | TAGPROPERTY_BLOCKMOVEMENT, 111, ICON_LOCATEPOI /* temporal */);
+        myAllowedTags[currentTag] = TagValues(TAGPROPERTY_SHAPE | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_BLOCKMOVEMENT, 111, ICON_LOCATEPOI /* temporal */);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,

@@ -48,13 +48,14 @@
 
 #include "GNEAccess.h"
 #include "GNEBusStop.h"
+#include "GNEAdditionalHandler.h"
 
 // ===========================================================================
 // member method definitions
 // ===========================================================================
 
-GNEAccess::GNEAccess(GNEBusStop *busStop, GNELane* lane, GNEViewNet* viewNet, const std::string& pos, const std::string& length, bool friendlyPos, bool blockMovement) :
-    GNEAdditional(busStop->generateAccessID(), viewNet, GLO_ACCESS, SUMO_TAG_ACCESS, true, blockMovement, busStop),
+GNEAccess::GNEAccess(GNEAdditional *busStop, GNELane* lane, GNEViewNet* viewNet, const std::string& pos, const std::string& length, bool friendlyPos, bool blockMovement) :
+    GNEAdditional(busStop, viewNet, GLO_ACCESS, SUMO_TAG_ACCESS, "", blockMovement),
     myLane(lane),
     myPositionOverLane(pos),
     myLength(length),
@@ -131,24 +132,18 @@ GNEAccess::updateGeometry() {
 
 Position 
 GNEAccess::getPositionInView() const {
-    if(myPositionOverLane.empty()) {
-        return myLane->getShape().positionAtOffset(0);
+    if(!canParse<double>(myPositionOverLane)) {
+        return myLane->getShape().front();
     } else {
-        return myLane->getShape().positionAtOffset(parse<double>(myPositionOverLane));
+        double posOverLane = parse<double>(myPositionOverLane);
+        if(posOverLane < 0) {
+            return myLane->getShape().front();
+        } else if (posOverLane > myLane->getShape().length()) {
+            return myLane->getShape().back();
+        } else {
+            return myLane->getShape().positionAtOffset(posOverLane);
+        }
     }
-}
-
-
-void
-GNEAccess::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_LANE);
-    writeAttribute(device, SUMO_ATTR_POSITION);
-    writeAttribute(device, SUMO_ATTR_LENGTH);
-    writeAttribute(device, SUMO_ATTR_FRIENDLY_POS);
-    // Close tag
-    device.closeTag();
 }
 
 
@@ -175,7 +170,7 @@ GNEAccess::getEdge() const {
 
 std::string
 GNEAccess::getParentName() const {
-    return myAdditionalParent->getID();
+    return myFirstAdditionalParent->getID();
 }
 
 
@@ -223,7 +218,7 @@ GNEAccess::getAttribute(SumoXMLAttr key) const {
         case GNE_ATTR_BLOCK_MOVEMENT:
             return toString(myBlockMovement);
         case GNE_ATTR_PARENT:
-            return myAdditionalParent->getID();
+            return myFirstAdditionalParent->getID();
         case GNE_ATTR_SELECTED:
             return toString(isAttributeCarrierSelected());
         default:
@@ -262,7 +257,7 @@ GNEAccess::isValid(SumoXMLAttr key, const std::string& value) {
             GNELane *lane = myViewNet->getNet()->retrieveLane(value, false);
             if (lane != nullptr) {
                 if(myLane->getParentEdge().getID() != lane->getParentEdge().getID()) {
-                    return dynamic_cast<GNEBusStop*>(myAdditionalParent)->accessCanBeCreated(lane->getParentEdge());
+                    return GNEAdditionalHandler::accessCanBeCreated(myFirstAdditionalParent, lane->getParentEdge());
                 } else {
                     return true;
                 }
@@ -291,6 +286,18 @@ GNEAccess::isValid(SumoXMLAttr key, const std::string& value) {
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }
+}
+
+
+std::string 
+GNEAccess::getPopUpID() const {
+    return toString(getTag());
+}
+
+
+std::string 
+GNEAccess::getHierarchyName() const {
+    return toString(getTag()) + ": " + myLane->getParentEdge().getID();
 }
 
 // ===========================================================================

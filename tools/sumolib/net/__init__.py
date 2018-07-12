@@ -26,19 +26,18 @@ from __future__ import absolute_import
 import os
 import sys
 import math
-import re
-from xml.sax import saxutils, parse, handler
+from xml.sax import handler, parse
 from copy import copy
-from itertools import *
+from itertools import *  # noqa
 from collections import defaultdict
 
 import sumolib
 from . import lane, edge, node, connection, roundabout
-from .lane import Lane
-from .edge import Edge
-from .node import Node
-from .connection import Connection
-from .roundabout import Roundabout
+from .lane import Lane  # noqa
+from .edge import Edge  # noqa
+from .node import Node  # noqa
+from .connection import Connection  # noqa
+from .roundabout import Roundabout  # noqa
 
 
 class TLS:
@@ -64,10 +63,10 @@ class TLS:
 
     def getLinks(self):
         links = {}
-        for connection in self._connections:
-            if connection[2] not in links:
-                links[connection[2]] = []
-            links[connection[2]].append(connection)
+        for the_connection in self._connections:
+            if the_connection[2] not in links:
+                links[the_connection[2]] = []
+            links[the_connection[2]].append(the_connection)
         return links
 
     def getEdges(self):
@@ -198,7 +197,7 @@ class Net:
                 viaEdge._addIncoming(connection.Connection(
                     fromEdge, viaEdge, fromlane, viaLane, direction, tls,
                     tllink, state, ''))
-            except:
+            except Exception:
                 pass
 
     def getEdges(self):
@@ -242,11 +241,11 @@ class Net:
                     "Warning: Module 'rtree' not available. Using brute-force fallback")
                 self.hasWarnedAboutMissingRTree = True
 
-            for edge in self._edges:
+            for the_edge in self._edges:
                 d = sumolib.geomhelper.distancePointToPolygon(
-                    (x, y), edge.getShape(includeJunctions))
+                    (x, y), the_edge.getShape(includeJunctions))
                 if d < r:
-                    edges.append((edge, d))
+                    edges.append((the_edge, d))
         return edges
 
     def getNeighboringLanes(self, x, y, r=0.1, includeJunctions=True):
@@ -254,8 +253,8 @@ class Net:
         try:
             if self._rtree is None:
                 if not self._allLanes:
-                    for edge in self._edges:
-                        self._allLanes += edge.getLanes()
+                    for the_edge in self._edges:
+                        self._allLanes += the_edge.getLanes()
                 self._initRTree(self._allLanes, includeJunctions)
             for i in self._rtree.intersection((x - r, y - r, x + r, y + r)):
                 l = self._allLanes[i]
@@ -264,8 +263,8 @@ class Net:
                 if d < r:
                     lanes.append((l, d))
         except ImportError:
-            for edge in self._edges:
-                for l in edge.getLanes():
+            for the_edge in self._edges:
+                for l in the_edge.getLanes():
                     d = sumolib.geomhelper.distancePointToPolygon(
                         (x, y), l.getShape(includeJunctions))
                     if d < r:
@@ -346,7 +345,8 @@ class Net:
                     if stopOnTLS and ci._tls and ci != edge and not stop:
                         ret.append([ie[0], ie[1], prev, True])
                         stop = True
-                    elif stopOnTurnaround and ie[0]._incoming[ci][0].getDirection() == Connection.LINKDIR_TURN and not stop:
+                    elif (stopOnTurnaround and ie[0]._incoming[ci][0].getDirection() == Connection.LINKDIR_TURN and
+                          not stop):
                         ret.append([ie[0], ie[1], prev, True])
                         stop = True
                     else:
@@ -359,10 +359,10 @@ class Net:
     def getEdgesByOrigID(self, origID):
         if self._origIdx is None:
             self._origIdx = defaultdict(set)
-            for edge in self._edges:
-                for lane in edge.getLanes():
-                    for oID in lane.getParam("origId", "").split():
-                        self._origIdx[oID].add(edge)
+            for the_edge in self._edges:
+                for the_lane in the_edge.getLanes():
+                    for oID in the_lane.getParam("origId", "").split():
+                        self._origIdx[oID].add(the_edge)
         return self._origIdx[origID]
 
     def getBBoxXY(self):
@@ -486,7 +486,8 @@ class NetReader(handler.ContentHandler):
                     intLanes = attrs["intLanes"].split(" ")
                 self._currentNode = self._net.addNode(attrs['id'], attrs['type'],
                                                       tuple(
-                                                          map(float, [attrs['x'], attrs['y'], attrs['z'] if 'z' in attrs else '0'])),
+                                                          map(float, [attrs['x'], attrs['y'],
+                                                              attrs['z'] if 'z' in attrs else '0'])),
                                                       attrs['incLanes'].split(" "), intLanes)
                 self._currentNode.setShape(
                     convertShape(attrs.get('shape', '')))
@@ -629,6 +630,7 @@ def readNet(filename, **others):
         parse(filename, netreader)
     except None:
         print(
-            "Please mind that the network format has changed in 0.13.0, you may need to update your network!", file=sys.stderr)
+            "Please mind that the network format has changed in 0.13.0, you may need to update your network!",
+            file=sys.stderr)
         sys.exit(1)
     return netreader.getNet()

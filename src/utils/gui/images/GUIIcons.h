@@ -225,6 +225,7 @@ enum GUIIcon {
     /// @name netedit additional icons
     /// @{
     ICON_BUSSTOP,
+    ICON_ACCESS,
     ICON_CONTAINERSTOP,
     ICON_CHARGINGSTATION,
     ICON_E1,
@@ -240,6 +241,20 @@ enum GUIIcon {
     ICON_CALIBRATOR,
     ICON_PARKINGAREA,
     ICON_PARKINGSPACE,
+    ICON_REROUTERINTERVAL,
+    ICON_VSSSTEP,
+    ICON_CLOSINGREROUTE,
+    ICON_CLOSINGLANEREROUTE,
+    ICON_DESTPROBREROUTE,
+    ICON_PARKINGZONEREROUTE,
+    ICON_ROUTEPROBREROUTE,
+    /// @}
+
+    /// @name netedit routeElements icons
+    /// @{
+    ICON_FLOW,
+    ICON_ROUTE,
+    ICON_VTYPE,
     /// @}
 
     /// @name vehicle Class icons

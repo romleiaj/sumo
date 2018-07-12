@@ -76,12 +76,15 @@ def getOptions():
                              type="float",
                              default=.1)
 
-    option_parser.add_option("--interior", action="store_true",
-                         default=False, help="Extend measurement area to the junction interior")
-    option_parser.add_option("--joined", action="store_true",
-                         default=False, help="Create one e3Detector per junction")
-    option_parser.add_option("--follow-turnaround", dest="followTurnaround", action="store_true",
-                         default=False, help="Extend entry detectors past turn-around connections")
+    option_parser.add_option(
+        "--interior", action="store_true",
+        default=False, help="Extend measurement area to the junction interior")
+    option_parser.add_option(
+        "--joined", action="store_true",
+        default=False, help="Create one e3Detector per junction")
+    option_parser.add_option(
+        "--follow-turnaround", dest="followTurnaround", action="store_true",
+        default=False, help="Extend entry detectors past turn-around connections")
     option_parser.set_usage("generateTLSE3Detectors.py -n example.net.xml "
                             "-l 250 -d .1 -f 60")
 
@@ -92,12 +95,13 @@ def getOptions():
         exit()
     return options
 
+
 def writeEntryExit(options, edge, detector_xml, writeExit=True):
     stopOnTLS = True
     stopOnTurnaround = not options.followTurnaround
     input_edges = network.getDownstreamEdges(
         edge, options.requested_detector_length, stopOnTLS, stopOnTurnaround)
-    input_edges.sort(key=lambda vals : vals[0].getID())
+    input_edges.sort(key=lambda vals: vals[0].getID())
     for firstEdge, position, intermediate, aborted in input_edges:
         if aborted:
             position = .1
@@ -110,7 +114,7 @@ def writeEntryExit(options, edge, detector_xml, writeExit=True):
     if writeExit:
         if options.interior:
             # exit just after leaving the intersection
-            for e2 in sorted(edge.getOutgoing(), key=lambda e : e.getID()):
+            for e2 in sorted(edge.getOutgoing(), key=lambda e: e.getID()):
                 for lane in e2.getLanes():
                     detector_exit_xml = detector_xml.addChild("detExit")
                     detector_exit_xml.setAttribute("lane", lane.getID())
@@ -128,7 +132,6 @@ if __name__ == "__main__":
     options = getOptions()
 
     logging.basicConfig(level="INFO")
-
 
     logging.info("Reading net...")
     network = sumolib.net.readNet(options.net_file)

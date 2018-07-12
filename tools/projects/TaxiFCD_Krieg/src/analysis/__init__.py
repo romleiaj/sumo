@@ -15,3 +15,5 @@
 # @date    2008-04-17
 # @version $Id$
 
+from . import CompareVelocity, FetchData, Taxi, Traveltime, Traveltime_DK  # noqa
+from . import TraveltimeMulti, VelocityCurve, VelocityOverRoute, VelocityOverTime  # noqa

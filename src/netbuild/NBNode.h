@@ -204,6 +204,10 @@ public:
     /// @brief unspecified lane width
     static const double UNSPECIFIED_RADIUS;
 
+    /// @brief flags for controlling shape generation
+    static const int AVOID_WIDE_RIGHT_TURN;
+    static const int AVOID_WIDE_LEFT_TURN;
+    static const int FOUR_CONTROL_POINTS;
 public:
     /**@brief Constructor
      * @param[in] id The id of the node
@@ -426,6 +430,11 @@ public:
                                   const NBEdge* prohibitorFrom, const NBEdge* prohibitorTo, int prohibitorFromLane,
                                   bool lefthand = false);
 
+    /// @brief return whether the given laneToLane connection originate from the same edge and are in conflict due to turning across each other
+    bool turnFoes(const NBEdge* from, const NBEdge* to, int fromLane,
+                                  const NBEdge* from2, const NBEdge* to2, int fromLane2,
+                                  bool lefthand = false) const;
+
     /**@brief Returns the information whether "prohibited" flow must let "prohibitor" flow pass
      * @param[in] possProhibitedFrom The maybe prohibited connection's begin
      * @param[in] possProhibitedTo The maybe prohibited connection's end
@@ -531,11 +540,12 @@ public:
      */
     PositionVector computeSmoothShape(const PositionVector& begShape, const PositionVector& endShape, int numPoints,
                                       bool isTurnaround, double extrapolateBeg, double extrapolateEnd,
-                                      NBNode* recordError = 0) const;
+                                      NBNode* recordError = 0, int shapeFlag=0) const;
     /// @brief get bezier control points
     static PositionVector bezierControlPoints(const PositionVector& begShape, const PositionVector& endShape,
             bool isTurnaround, double extrapolateBeg, double extrapolateEnd,
-            bool& ok, NBNode* recordError = 0, double straightThresh = DEG2RAD(5));
+            bool& ok, NBNode* recordError = 0, double straightThresh = DEG2RAD(5),
+            int shapeFlag = 0);
 
 
     /// @brief compute the displacement error during s-curve computation
@@ -739,7 +749,7 @@ private:
     void removeJoinedTrafficLights();
 
     /// @brief displace lane shapes to account for change in lane width at this node
-    void displaceShapeAtWidthChange(const NBEdge::Connection& con, PositionVector& fromShape, PositionVector& toShape) const;
+    void displaceShapeAtWidthChange(const NBEdge* from, const NBEdge::Connection& con, PositionVector& fromShape, PositionVector& toShape) const;
 
 private:
     /// @brief The position the node lies at

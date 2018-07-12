@@ -41,21 +41,15 @@ public:
      * @param[in] lane Lane of this StoppingPlace belongs
      * @param[in] viewNet pointer to GNEViewNet of this additional element belongs
      * @param[in] pos position of the detector on the lane
-     * @param[in] freq the aggregation period the values the detector collects shall be summed up.
      * @param[in] filename The path to the output file.
-     * @param[in] vehicleTypes space separated list of vehicle type ids to consider
+     * @param[in] name E1 Instant detector name
      * @param[in] friendlyPos enable or disable friendly positions
      * @param[in] block movement enable or disable additional movement
      */
-    GNEDetectorE1Instant(const std::string& id, GNELane* lane, GNEViewNet* viewNet, double pos, double freq, const std::string& filename, const std::string& vehicleTypes, bool friendlyPos, bool blockMovement);
+    GNEDetectorE1Instant(const std::string& id, GNELane* lane, GNEViewNet* viewNet, double pos, const std::string& filename, const std::string& name, bool friendlyPos, bool blockMovement);
 
     /// @brief Destructor
     ~GNEDetectorE1Instant();
-
-    /**@brief writte additional element into a xml file
-     * @param[in] device device in which write parameters of additional element
-     */
-    void writeAdditional(OutputDevice& device) const;
 
     /// @brief check if Position of detector is fixed
     bool isDetectorPositionFixed() const;
@@ -97,10 +91,6 @@ public:
      */
     bool isValid(SumoXMLAttr key, const std::string& value);
     /// @}
-
-protected:
-    /// @brief attribute vehicle types
-    std::string myVehicleTypes;
 
 private:
     /// @brief set attribute after validation

@@ -96,41 +96,6 @@ GNEParkingArea::updateGeometry() {
 
 
 void
-GNEParkingArea::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_ID);
-    writeAttribute(device, SUMO_ATTR_LANE);
-    writeAttribute(device, SUMO_ATTR_STARTPOS);
-    writeAttribute(device, SUMO_ATTR_ENDPOS);
-    if (myName.empty() == false) {
-        writeAttribute(device, SUMO_ATTR_NAME);
-    }
-    writeAttribute(device, SUMO_ATTR_FRIENDLY_POS);
-    writeAttribute(device, SUMO_ATTR_ROADSIDE_CAPACITY);
-    writeAttribute(device, SUMO_ATTR_WIDTH);
-    writeAttribute(device, SUMO_ATTR_LENGTH);
-    writeAttribute(device, SUMO_ATTR_ANGLE);
-    // Write ParkingSpace
-    for (auto i : myAdditionalChilds) {
-        i->writeAdditional(device);
-    }
-    // Close tag
-    device.closeTag();
-}
-
-
-std::string 
-GNEParkingArea::generateParkingSpaceID() {
-    int counter = 0;
-    while (myViewNet->getNet()->getAdditional(SUMO_TAG_PARKING_SPACE, getID() + toString(SUMO_TAG_PARKING_SPACE) + toString(counter)) != nullptr) {
-        counter++;
-    }
-    return (getID() + toString(SUMO_TAG_PARKING_SPACE) + toString(counter));
-}
-
-
-void
 GNEParkingArea::drawGL(const GUIVisualizationSettings& s) const {
     // obtain circle resolution
     int circleResolution = getCircleResolution(s);
@@ -209,8 +174,8 @@ GNEParkingArea::drawGL(const GUIVisualizationSettings& s) const {
     glPopMatrix();
     // Draw name if isn't being drawn for selecting
     drawName(getCenteringBoundary().getCenter(), s.scale, s.addName);
-    if (s.addFullName.show && (myName != "") && !s.drawForSelecting) {
-        GLHelper::drawText(myName, mySignPos, GLO_MAX - getType(), s.addFullName.scaledSize(s.scale), s.addFullName.color, myBlockIconRotation);
+    if (s.addFullName.show && (myAdditionalName != "") && !s.drawForSelecting) {
+        GLHelper::drawText(myAdditionalName, mySignPos, GLO_MAX - getType(), s.addFullName.scaledSize(s.scale), s.addFullName.color, myBlockIconRotation);
     }
     // Pop name matrix
     glPopName();
@@ -229,7 +194,7 @@ GNEParkingArea::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_ENDPOS:
             return myEndPosition;
         case SUMO_ATTR_NAME:
-            return myName;
+            return myAdditionalName;
         case SUMO_ATTR_FRIENDLY_POS:
             return toString(myFriendlyPosition);
         case SUMO_ATTR_ROADSIDE_CAPACITY:
@@ -261,7 +226,7 @@ GNEParkingArea::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoL
             undoList->p_add(new GNEChange_Attribute(this, key, value));
             // Change Ids of all Parking Spaces
             for (auto i : myAdditionalChilds) {
-                i->setAttribute(SUMO_ATTR_ID, generateParkingSpaceID(), undoList);
+                i->setAttribute(SUMO_ATTR_ID, generateAdditionalChildID(SUMO_TAG_PARKING_SPACE), undoList);
             }
             break;
         }
@@ -326,7 +291,7 @@ GNEParkingArea::isValid(SumoXMLAttr key, const std::string& value) {
                 }
             }
         case SUMO_ATTR_NAME:
-            return true;
+            return isValidName(value);
         case SUMO_ATTR_FRIENDLY_POS:
             return canParse<bool>(value);
         case SUMO_ATTR_ROADSIDE_CAPACITY:
@@ -370,7 +335,7 @@ GNEParkingArea::setAttribute(SumoXMLAttr key, const std::string& value) {
             myEndPosition = value;
             break;
         case SUMO_ATTR_NAME:
-            myName = value;
+            myAdditionalName = value;
             break;
         case SUMO_ATTR_FRIENDLY_POS:
             myFriendlyPosition = parse<bool>(value);

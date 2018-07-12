@@ -13,7 +13,7 @@
 # @author  Jakob Erdmann
 # @author  Daniel Krajzewicz
 # @date    2011-03-04
-# @version $Id: runner.py v0_32_0+0134-9f1b8d0bad namdre.sumo@gmail.com 2018-01-05 13:46:42 +0100 $
+# @version $Id$
 
 
 from __future__ import print_function
@@ -21,9 +21,12 @@ from __future__ import absolute_import
 import os
 import subprocess
 import sys
-import random
-sys.path.append(os.path.join(os.environ['SUMO_HOME'], 'tools'))
-import traci
+if 'SUMO_HOME' in os.environ:
+    tools = os.path.join(os.environ['SUMO_HOME'], 'tools')
+    sys.path.append(tools)
+else:
+    sys.exit("please declare environment variable 'SUMO_HOME'")
+import traci  # noqa
 import sumolib  # noqa
 
 sumoBinary = sumolib.checkBinary('sumo')
@@ -43,6 +46,7 @@ def step():
     s = traci.simulation.getCurrentTime() / 1000
     traci.simulationStep()
     return s
+
 
 for i in range(3):
     print("step", step())
@@ -132,6 +136,7 @@ def checkOffRoad(vehID):
            "CO2", traci.vehicle.getCO2Emission(vehID)
            ))
 
+
 vehID = "horiz"
 check(vehID)
 traci.vehicle.subscribe(vehID)
@@ -175,11 +180,11 @@ traci.vehicle.setStop(
 sys.stderr.flush()
 
 check(vehID)
-traci.vehicle.setAdaptedTraveltime(vehID,"1o")
+traci.vehicle.setAdaptedTraveltime(vehID, "1o")
 traci.vehicle.setEffort(vehID, "1o")
 print("reset traveltime", traci.vehicle.getAdaptedTraveltime(vehID, 0, "1o"))
 print("reset effort", traci.vehicle.getEffort(vehID, 0, "1o"))
-traci.vehicle.setAdaptedTraveltime(vehID,"1o", 23)
+traci.vehicle.setAdaptedTraveltime(vehID, "1o", 23)
 traci.vehicle.setEffort(vehID, "1o", 24)
 print("set traveltime (default range)", traci.vehicle.getAdaptedTraveltime(vehID, 0, "1o"))
 print("set effort (default range)", traci.vehicle.getEffort(vehID, 0, "1o"))
@@ -426,18 +431,19 @@ except traci.TraCIException as e:
 
 for i in range(10):
     step()
-    print('%s speed="%s" consumed="%s" charged="%s" cap="%s" maxCap="%s" station="%s" mass=%s emissionClass=%s electricityConsumption=%s' % (
-        electricVeh,
-        traci.vehicle.getSpeed(electricVeh),
-        traci.vehicle.getParameter(electricVeh, "device.battery.energyConsumed"),
-        traci.vehicle.getParameter(electricVeh, "device.battery.energyCharged"),
-        traci.vehicle.getParameter(electricVeh, "device.battery.actualBatteryCapacity"),
-        traci.vehicle.getParameter(electricVeh, "device.battery.maximumBatteryCapacity"),
-        traci.vehicle.getParameter(electricVeh, "device.battery.chargingStationId"),
-        traci.vehicle.getParameter(electricVeh, "device.battery.vehicleMass"),
-        traci.vehicle.getEmissionClass(electricVeh),
-        traci.vehicle.getElectricityConsumption(electricVeh),
-        ))
+    print(('%s speed="%s" consumed="%s" charged="%s" cap="%s" maxCap="%s" station="%s" mass=%s emissionClass=%s ' +
+          'electricityConsumption=%s') % (
+            electricVeh,
+            traci.vehicle.getSpeed(electricVeh),
+            traci.vehicle.getParameter(electricVeh, "device.battery.energyConsumed"),
+            traci.vehicle.getParameter(electricVeh, "device.battery.energyCharged"),
+            traci.vehicle.getParameter(electricVeh, "device.battery.actualBatteryCapacity"),
+            traci.vehicle.getParameter(electricVeh, "device.battery.maximumBatteryCapacity"),
+            traci.vehicle.getParameter(electricVeh, "device.battery.chargingStationId"),
+            traci.vehicle.getParameter(electricVeh, "device.battery.vehicleMass"),
+            traci.vehicle.getEmissionClass(electricVeh),
+            traci.vehicle.getElectricityConsumption(electricVeh),
+            ))
 # test for adding a trip
 traci.route.add("trip2", ["3si", "4si"])
 traci.vehicle.add("triptest2", "trip2", typeID="reroutingType")

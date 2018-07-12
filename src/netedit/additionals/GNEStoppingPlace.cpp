@@ -36,8 +36,6 @@
 #include <utils/gui/windows/GUIAppEnum.h>
 #include <utils/gui/images/GUITexturesHelper.h>
 #include <utils/xml/SUMOSAXHandler.h>
-
-#include "GNEStoppingPlace.h"
 #include <netedit/netelements/GNELane.h>
 #include <netedit/netelements/GNEEdge.h>
 #include <netedit/netelements/GNEJunction.h>
@@ -45,6 +43,8 @@
 #include <netedit/GNENet.h>
 #include <netedit/changes/GNEChange_Attribute.h>
 #include <netedit/GNEViewNet.h>
+
+#include "GNEStoppingPlace.h"
 #include "GNEAdditionalHandler.h"
 
 // ===========================================================================
@@ -61,11 +61,10 @@ const double GNEStoppingPlace::myCircleInText = 1.6;
 // ===========================================================================
 
 GNEStoppingPlace::GNEStoppingPlace(const std::string& id, GNEViewNet* viewNet, GUIGlObjectType type, SumoXMLTag tag, GNELane* lane, const std::string& startPos, const std::string& endPos, const std::string& name, bool friendlyPosition, bool blockMovement) :
-    GNEAdditional(id, viewNet, type, tag, true, blockMovement),
+    GNEAdditional(id, viewNet, type, tag, name, blockMovement),
     myLane(lane),
     myStartPosition(startPos),
     myEndPosition(endPos),
-    myName(name),
     myFriendlyPosition(friendlyPosition) {
 }
 
@@ -75,14 +74,16 @@ GNEStoppingPlace::~GNEStoppingPlace() {}
 
 Position
 GNEStoppingPlace::getPositionInView() const {
+    double startPos = canParse<double>(myStartPosition)? parse<double>(myStartPosition) : 0;
+    double endPos = canParse<double>(myEndPosition)? parse<double>(myEndPosition) : myLane->getShape().length();
     if(myStartPosition.empty() && myEndPosition.empty()) {
         return myLane->getShape().positionAtOffset(myLane->getShape().length()/2);
     } else if (myStartPosition.empty()) {
-        return myLane->getShape().positionAtOffset(parse<double>(myEndPosition));
+        return myLane->getShape().positionAtOffset(endPos);
     } else if(myEndPosition.empty()) {
-        return myLane->getShape().positionAtOffset(parse<double>(myStartPosition));
+        return myLane->getShape().positionAtOffset(startPos);
     } else {
-        return myLane->getShape().positionAtOffset((parse<double>(myStartPosition) + parse<double>(myEndPosition)) / 2.0);
+        return myLane->getShape().positionAtOffset((startPos + endPos) / 2.0);
     }
 }
 
@@ -146,7 +147,7 @@ GNEStoppingPlace::getLane() const {
 
 double 
 GNEStoppingPlace::getStartPosition() const {
-    if(!myStartPosition.empty()) {
+    if(canParse<double>(myStartPosition)) {
         return parse<double>(myStartPosition);
     } else {
         return 0;
@@ -156,7 +157,7 @@ GNEStoppingPlace::getStartPosition() const {
 
 double 
 GNEStoppingPlace::getEndPosition() const {
-    if(!myEndPosition.empty()) {
+    if(canParse<double>(myEndPosition)) {
         return parse<double>(myEndPosition);
     } else {
         return myLane->getLaneShapeLength();
@@ -172,12 +173,13 @@ GNEStoppingPlace::areStoppingPlacesPositionsFixed() const {
     } else {
         if (myStartPosition.empty() && myEndPosition.empty()) {
             return true;
-        } else if(myStartPosition.empty()) {
-            return (parse<double>(myEndPosition) <= myLane->getParentEdge().getNBEdge()->getFinalLength());
+        } else if (myStartPosition.empty()) {
+            return (canParse<double>(myEndPosition) && (parse<double>(myEndPosition) <= myLane->getParentEdge().getNBEdge()->getFinalLength()));
         } else if(myEndPosition.empty()) {
-            return (parse<double>(myStartPosition) >= 0);
+            return (canParse<double>(myStartPosition) && (parse<double>(myStartPosition) >= 0));
         } else {
-            return (parse<double>(myStartPosition) >= 0) &&
+            return canParse<double>(myStartPosition) && canParse<double>(myEndPosition) &&
+                   (parse<double>(myStartPosition) >= 0) &&
                    (parse<double>(myEndPosition) <= myLane->getParentEdge().getNBEdge()->getFinalLength()) &&
                    ((parse<double>(myEndPosition) - parse<double>(myStartPosition)) >= POSITION_EPS);
         }
@@ -259,6 +261,18 @@ GNEStoppingPlace::setStoppingPlaceGeometry(double movingToSide) {
             myShapeRotations.push_back((double) atan2((s.x() - f.x()), (f.y() - s.y())) * (double) 180.0 / (double)M_PI);
         }
     }
+}
+
+
+std::string 
+GNEStoppingPlace::getPopUpID() const {
+    return toString(getTag()) + ": " + getID();
+}
+
+
+std::string 
+GNEStoppingPlace::getHierarchyName() const {
+    return toString(getTag());
 }
 
 /****************************************************************************/

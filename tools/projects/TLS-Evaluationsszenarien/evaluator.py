@@ -17,11 +17,11 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from genRoutes import *
+from genRoutes import genRoutes
 import subprocess
 import sys
-from changeNet import *
-from pylab import *
+from changeNet import setTLType, changePhaseDurations
+from pylab import ceil
 import libxml2
 
 durWE = []
@@ -117,7 +117,8 @@ def getSaturationFlow():
         sumoExe = "sumo"
         sumoConfig = "sumoConfig\cross_sat\cross_sat.sumocfg"
         sumoProcess = subprocess.Popen(
-            "%s -c %s --no-duration-log --no-step-log --time-to-teleport 10000000" % (sumoExe, sumoConfig), shell=True, stdout=sys.stdout)
+            ("%s -c %s --no-duration-log --no-step-log --time-to-teleport 10000000") % (
+             sumoExe, sumoConfig), shell=True, stdout=sys.stdout)
 
     sumoProcess.wait()
 
@@ -132,13 +133,13 @@ def getSaturationFlow():
     ySat = sumVeh[323:538]
     [aSat, b] = linreg(xSat, ySat)
     print('Saturation flow: ', aSat * 3600)
-    ySatN = [aSat * xSat[i] + b for i in range(len(xSat))]
+    [aSat * xSat[i] + b for i in range(len(xSat))]
 
     x = range(700, 850)
     y = sumVeh[700:850]
     [a, b] = linreg(x, y)
     print('Saturation flow 2: ', a * 3600)
-    ynew = [a * x[i] + b for i in range(len(x))]
+    [a * x[i] + b for i in range(len(x))]
 
 #    plot(range(len(veh)), sumVeh, xSat, ySatN, x, ynew)
 #    legend(('Anzahl Fahrzeuge', 'saturation flow = %f' % (aSat * 3600), 'flow = %f' % (a * 3600)))
@@ -168,7 +169,8 @@ def getMinTravelTime():
         sumoExe = "sumo"
         sumoConfig = "sumoConfig\one_intersection\cross.sumocfg"
         sumoProcess = subprocess.Popen(
-            "%s -c %s --no-duration-log --no-step-log --time-to-teleport 10000000" % (sumoExe, sumoConfig), shell=True, stdout=sys.stdout)
+            ("%s -c %s --no-duration-log --no-step-log --time-to-teleport 10000000") % (
+             sumoExe, sumoConfig), shell=True, stdout=sys.stdout)
 
     sumoProcess.wait()
 

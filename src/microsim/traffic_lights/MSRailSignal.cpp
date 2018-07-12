@@ -84,6 +84,14 @@ MSRailSignal::init(NLDetectorBuilder&) {
             double blockLength = approachingLane->getLength();
             while (noRailSignal) {
                 std::vector<MSLane::IncomingLaneInfo> incomingLanes = currentLane->getIncomingLanes();
+                // ignore incoming lanes for non-rail classes
+                for (auto it = incomingLanes.begin(); it != incomingLanes.end();) {
+                    if (((*it).lane->getPermissions() & SVC_RAIL_CLASSES) == 0) {
+                        it = incomingLanes.erase(it);
+                    } else {
+                        it++;
+                    }
+                }
                 MSLane* precedentLane;
                 if (!incomingLanes.empty()) {
                     precedentLane = incomingLanes.front().lane;
@@ -98,7 +106,7 @@ MSRailSignal::init(NLDetectorBuilder&) {
                     noRailSignal = false;
                 } else {
                     const MSJunction* junction = precedentLane->getEdge().getToJunction();
-                    if ((junction != 0) && (junction->getType() == NODETYPE_RAIL_SIGNAL)) { //if this junction exists and if it has a rail signal
+                    if ((junction != 0) && (junction->getType() == NODETYPE_RAIL_SIGNAL || junction->getType() == NODETYPE_TRAFFIC_LIGHT)) { //if this junction exists and if it has a rail signal
                         noRailSignal = false;
                     } else {
                         afferentBlock.push_back(precedentLane);
@@ -123,7 +131,7 @@ MSRailSignal::init(NLDetectorBuilder&) {
                     std::vector<MSLink*>::const_iterator j;
                     for (j = outGoingLinks.begin(); j != outGoingLinks.end(); j++) {
                         const MSJunction* junction = currentLane->getEdge().getToJunction();
-                        if ((junction != 0) && (junction->getType() == NODETYPE_RAIL_SIGNAL)) { //if this junctions exists and if it has a rail signal
+                        if ((junction != 0) && (junction->getType() == NODETYPE_RAIL_SIGNAL || junction->getType() == NODETYPE_TRAFFIC_LIGHT)) { //if this junctions exists and if it has a rail signal
                             noRailSignalLocal = false;
                             break;
                         }
@@ -131,6 +139,14 @@ MSRailSignal::init(NLDetectorBuilder&) {
                     if (noRailSignalLocal) { //if currentLane is not ending at a railSignal
                         //get the next lane
                         std::vector<const MSLane*> outGoingLanes = currentLane->getOutgoingLanes();
+                        // ignore outgoing lanes for non-rail classes
+                        for (auto it = outGoingLanes.begin(); it != outGoingLanes.end();) {
+                            if (((*it)->getPermissions() & SVC_RAIL_CLASSES) == 0) {
+                                it = outGoingLanes.erase(it);
+                            } else {
+                                it++;
+                            }
+                        }
                         if (outGoingLanes.size() == 0) {    //if the current lane has no outgoing lanes (deadend)
                             noRailSignalLocal = false;
                         } else if (blockLength > MAX_BLOCK_LENGTH) {

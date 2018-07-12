@@ -52,8 +52,8 @@
 // member method definitions
 // ===========================================================================
 
-GNEVaporizer::GNEVaporizer(GNEViewNet* viewNet, GNEEdge* edge, double begin, double end) :
-    GNEAdditional(edge->getID(), viewNet, GLO_VAPORIZER, SUMO_TAG_VAPORIZER, false, false),
+GNEVaporizer::GNEVaporizer(GNEViewNet* viewNet, GNEEdge* edge, double begin, double end, const std::string &name) :
+    GNEAdditional(edge->getID(), viewNet, GLO_VAPORIZER, SUMO_TAG_VAPORIZER, name, false),
     myEdge(edge),
     myBegin(begin),
     myEnd(end) {
@@ -76,9 +76,6 @@ GNEVaporizer::updateGeometry() {
     // get lanes of edge
     GNELane* firstLane = myEdge->getLanes().at(0);
 
-    // Save number of lanes
-    myNumberOfLanes = int(myEdge->getLanes().size());
-
     // Get shape of lane parent
     double offset = firstLane->getShape().length() < 2.5 ? firstLane->getShape().length() : 2.5;
     myShape.push_back(firstLane->getShape().positionAtOffset(offset));
@@ -90,13 +87,13 @@ GNEVaporizer::updateGeometry() {
     Position s = myShape[0] + Position(1, 0);
 
     // Save rotation (angle) of the vector constructed by points f and s
-    myShapeRotations.push_back(firstLane->getShape().rotationDegreeAtOffset(offset) * -1);
+    myShapeRotations.push_back(firstLane->getShape().rotationDegreeAtOffset(0) * -1);
 
     // Set block icon position
     myBlockIconPosition = myShape.getLineCenter();
 
     // Set offset of the block icon
-    myBlockIconOffset = Position(1.1, (-3.06) - 2);
+    myBlockIconOffset = Position(1.1, (-3.06));
 
     // Set block icon rotation, and using their rotation for logo
     setBlockIconRotation(firstLane);
@@ -108,11 +105,15 @@ GNEVaporizer::updateGeometry() {
 
 Position
 GNEVaporizer::getPositionInView() const {
-    Position A = myEdge->getLanes().front()->getShape().positionAtOffset(5);
-    Position B = myEdge->getLanes().back()->getShape().positionAtOffset(5);
+    if(myEdge->getLanes().front()->getShape().length() < 2.5) {
+        return myEdge->getLanes().front()->getShape().front();
+    } else {
+        Position A = myEdge->getLanes().front()->getShape().positionAtOffset(2.5);
+        Position B = myEdge->getLanes().back()->getShape().positionAtOffset(2.5);
 
-    // return Middle point
-    return Position((A.x() + B.x()) / 2, (A.y() + B.y()) / 2);
+        // return Middle point
+        return Position((A.x() + B.x()) / 2, (A.y() + B.y()) / 2);
+    }
 }
 
 
@@ -125,18 +126,6 @@ GNEVaporizer::moveGeometry(const Position&, const Position&) {
 void
 GNEVaporizer::commitGeometryMoving(const Position&, GNEUndoList*) {
     // This additional cannot be moved
-}
-
-
-void
-GNEVaporizer::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    device.writeAttr(SUMO_ATTR_ID, myEdge->getID());
-    writeAttribute(device, SUMO_ATTR_BEGIN);
-    writeAttribute(device, SUMO_ATTR_END);
-    // Close tag
-    device.closeTag();
 }
 
 
@@ -153,6 +142,7 @@ GNEVaporizer::drawGL(const GUIVisualizationSettings& s) const {
     double width = (double) 2.0 * s.scale;
     glLineWidth(1.0);
     const double exaggeration = s.addSize.getExaggeration(s);
+    const int numberOfLanes = int(myEdge->getLanes().size());
 
     // set color
     if (isAttributeCarrierSelected()) {
@@ -170,8 +160,8 @@ GNEVaporizer::drawGL(const GUIVisualizationSettings& s) const {
     glBegin(GL_QUADS);
     glVertex2d(0,  0.25);
     glVertex2d(0, -0.25);
-    glVertex2d((myNumberOfLanes * 3.3), -0.25);
-    glVertex2d((myNumberOfLanes * 3.3),  0.25);
+    glVertex2d((numberOfLanes * 3.3), -0.25);
+    glVertex2d((numberOfLanes * 3.3),  0.25);
     glEnd();
     glTranslated(0, 0, .01);
     glBegin(GL_LINES);
@@ -189,7 +179,7 @@ GNEVaporizer::drawGL(const GUIVisualizationSettings& s) const {
         glRotated(90, 0, 0, -1);
         glBegin(GL_LINES);
         glVertex2d(0, 0);
-        glVertex2d(0, (myNumberOfLanes * 3.3));
+        glVertex2d(0, (numberOfLanes * 3.3));
         glEnd();
     }
 
@@ -240,6 +230,8 @@ GNEVaporizer::getAttribute(SumoXMLAttr key) const {
             return toString(myBegin);
         case SUMO_ATTR_END:
             return toString(myEnd);
+        case SUMO_ATTR_NAME:
+            return myAdditionalName;
         case GNE_ATTR_SELECTED:
             return toString(isAttributeCarrierSelected());
         default:
@@ -258,6 +250,7 @@ GNEVaporizer::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoLis
         case SUMO_ATTR_EDGE:
         case SUMO_ATTR_BEGIN:
         case SUMO_ATTR_END:
+        case SUMO_ATTR_NAME:
         case GNE_ATTR_SELECTED:
             undoList->p_add(new GNEChange_Attribute(this, key, value));
             break;
@@ -288,6 +281,8 @@ GNEVaporizer::isValid(SumoXMLAttr key, const std::string& value) {
             } else {
                 return false;
             }
+        case SUMO_ATTR_NAME:
+            return isValidName(value);
         case GNE_ATTR_SELECTED:
             return canParse<bool>(value);
         default:
@@ -295,6 +290,21 @@ GNEVaporizer::isValid(SumoXMLAttr key, const std::string& value) {
     }
 }
 
+
+std::string 
+GNEVaporizer::getPopUpID() const {
+    return toString(getTag());
+}
+
+
+std::string 
+GNEVaporizer::getHierarchyName() const {
+    return toString(getTag()) + ": " + getAttribute(SUMO_ATTR_BEGIN) + " -> " + getAttribute(SUMO_ATTR_END);
+}
+
+// ===========================================================================
+// private
+// ===========================================================================
 
 void
 GNEVaporizer::setAttribute(SumoXMLAttr key, const std::string& value) {
@@ -308,6 +318,9 @@ GNEVaporizer::setAttribute(SumoXMLAttr key, const std::string& value) {
             break;
         case SUMO_ATTR_END:
             myEnd = parse<double>(value);
+            break;
+        case SUMO_ATTR_NAME:
+            myAdditionalName = value;
             break;
         case GNE_ATTR_SELECTED:
             if(parse<bool>(value)) {

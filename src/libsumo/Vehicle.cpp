@@ -724,12 +724,12 @@ Vehicle::changeTarget(const std::string& vehicleID, const std::string& edgeID) {
     MSNet::getInstance()->getRouterTT().compute(
         currentEdge, destEdge, (const MSVehicle * const)veh, MSNet::getInstance()->getCurrentTimeStep(), newRoute);
     // replace the vehicle's route by the new one
-    if (!veh->replaceRouteEdges(newRoute, onInit)) {
+    if (!veh->replaceRouteEdges(newRoute, "traci:changeTarget", onInit)) {
         throw TraCIException("Route replacement failed for " + veh->getID());
     }
     // route again to ensure usage of via/stops
     try {
-        veh->reroute(MSNet::getInstance()->getCurrentTimeStep(), MSNet::getInstance()->getRouterTT(), onInit);
+        veh->reroute(MSNet::getInstance()->getCurrentTimeStep(), "traci:changeTarget", MSNet::getInstance()->getRouterTT(), onInit);
     } catch (ProcessError& e) {
         throw TraCIException(e.what());
     }
@@ -811,6 +811,13 @@ Vehicle::add(const std::string& vehicleID,
             }
         } else {
             throw TraCIException("Invalid route '" + routeID + "' for vehicle: '" + vehicleID + "'");
+        }
+    }
+    // check if the route implies a trip
+    if (route->getEdges().size() == 2) {
+        const MSEdgeVector& succ = route->getEdges().front()->getSuccessors();
+        if (std::find(succ.begin(), succ.end(), route->getEdges().back()) == succ.end()) {
+            vehicleParams.parametersSet |= VEHPARS_FORCE_REROUTE;
         }
     }
     std::string error;
@@ -1020,7 +1027,7 @@ Vehicle::setRouteID(const std::string& vehicleID, const std::string& routeID) {
         }
     }
 
-    if (!veh->replaceRoute(r, veh->getLane() == 0)) {
+    if (!veh->replaceRoute(r, "traci:setRouteID", veh->getLane() == 0)) {
         throw TraCIException("Route replacement failed for " + veh->getID());
     }
 }
@@ -1035,7 +1042,7 @@ Vehicle::setRoute(const std::string& vehicleID, const std::vector<std::string>& 
     } catch (ProcessError& e) {
         throw TraCIException("Invalid edge list for vehicle '" + veh->getID() + "' (" + e.what() + ")");
     }
-    if (!veh->replaceRouteEdges(edges, veh->getLane() == 0, true)) {
+    if (!veh->replaceRouteEdges(edges, "traci:setRoute", veh->getLane() == 0, true)) {
         throw TraCIException("Route replacement failed for " + veh->getID());
     }
 }
@@ -1095,14 +1102,14 @@ Vehicle::setEffort(const std::string& vehicleID, const std::string& edgeID,
 void
 Vehicle::rerouteTraveltime(const std::string& vehicleID) {
     MSVehicle* veh = getVehicle(vehicleID);
-    veh->reroute(MSNet::getInstance()->getCurrentTimeStep(), MSNet::getInstance()->getRouterTT(), isOnInit(vehicleID));
+    veh->reroute(MSNet::getInstance()->getCurrentTimeStep(), "traci:rerouteTraveltime", MSNet::getInstance()->getRouterTT(), isOnInit(vehicleID));
 }
 
 
 void
 Vehicle::rerouteEffort(const std::string& vehicleID) {
     MSVehicle* veh = getVehicle(vehicleID);
-    veh->reroute(MSNet::getInstance()->getCurrentTimeStep(), MSNet::getInstance()->getRouterEffort(), isOnInit(vehicleID));
+    veh->reroute(MSNet::getInstance()->getCurrentTimeStep(), "traci:rerouteEffort", MSNet::getInstance()->getRouterEffort(), isOnInit(vehicleID));
 }
 
 

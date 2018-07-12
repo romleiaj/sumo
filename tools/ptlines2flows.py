@@ -48,20 +48,27 @@ def get_options(args=None):
     optParser.add_option("-p", "--period", type=float, default=600, help="period")
     optParser.add_option("-b", "--begin", type=float, default=0, help="start time")
     optParser.add_option("-e", "--end", type=float, default=3600, help="end time")
-    optParser.add_option("--min-stops", type=int, default=2, help="only import lines with at least this number of stops")
+    optParser.add_option("--min-stops", type=int, default=2,
+                         help="only import lines with at least this number of stops")
     optParser.add_option("-f", "--flow-attributes", dest="flowattrs",
                          default="", help="additional flow attributes")
-    optParser.add_option("--use-osm-routes", default=False, action="store_true", dest='osmRoutes', help="use osm routes")
-    optParser.add_option("--random-begin", default=False, action="store_true", dest='randomBegin', help="randomize begin times within period")
+    optParser.add_option("--use-osm-routes", default=False, action="store_true",
+                         dest='osmRoutes', help="use osm routes")
+    optParser.add_option("--random-begin", default=False, action="store_true",
+                         dest='randomBegin', help="randomize begin times within period")
     optParser.add_option("--seed", type="int", help="random seed")
-    optParser.add_option("--ignore-errors", default=False, action="store_true", dest='ignoreErrors', help="ignore problems with the input data")
-    optParser.add_option("--no-vtypes", default=False, action="store_true", dest='novtypes', help="do not write vtypes for generated flows")
+    optParser.add_option("--ignore-errors", default=False, action="store_true",
+                         dest='ignoreErrors', help="ignore problems with the input data")
+    optParser.add_option("--no-vtypes", default=False, action="store_true",
+                         dest='novtypes', help="do not write vtypes for generated flows")
     optParser.add_option("--types", help="only export the given list of types (using OSM nomenclature)")
-    optParser.add_option("--bus.parking", default=False, action="store_true", dest='busparking', help="let busses clear the road while stopping")
+    optParser.add_option("--bus.parking", default=False, action="store_true",
+                         dest='busparking', help="let busses clear the road while stopping")
     optParser.add_option("--vtype-prefix", default="", dest='vtypeprefix', help="prefix for vtype ids")
-    optParser.add_option("-d", "--stop-duration", default=30, type="float", dest='stopduration', 
-            help="Configure the minimum stopping duration")
-    optParser.add_option("-H", "--human-readable-time", dest="hrtime", default=False, action="store_true", help="write times as h:m:s")
+    optParser.add_option("-d", "--stop-duration", default=30, type="float", dest='stopduration',
+                         help="Configure the minimum stopping duration")
+    optParser.add_option("-H", "--human-readable-time", dest="hrtime", default=False,
+                         action="store_true", help="write times as h:m:s")
     optParser.add_option("-v", "--verbose", action="store_true", default=False, help="tell me what you are doing")
     (options, args) = optParser.parse_args(args=args)
 
@@ -80,6 +87,7 @@ def get_options(args=None):
 
     return options
 
+
 def writeTypes(fout, prefix):
     print("""    <vType id="%sbus" vClass="bus"/>
     <vType id="%stram" vClass="tram"/>
@@ -89,7 +97,7 @@ def writeTypes(fout, prefix):
     <vType id="%smonorail" vClass="rail"/>
     <vType id="%strolleybus" vClass="bus"/>
     <vType id="%saerialway" vClass="bus"/>
-    <vType id="%sferry" vClass="ship"/>""" % tuple([prefix]*9), file=fout)
+    <vType id="%sferry" vClass="ship"/>""" % tuple([prefix] * 9), file=fout)
 
 
 def createTrips(options):
@@ -104,7 +112,8 @@ def createTrips(options):
     trpMap = {}
     with codecs.open(options.trips, 'w', encoding="UTF8") as fouttrips:
         sumolib.writeXMLHeader(
-            fouttrips, "$Id$", "routes")
+            fouttrips, "$Id$",
+            "routes")
         writeTypes(fouttrips, options.vtypeprefix)
 
         departTimes = [options.begin for line in sumolib.output.parse_fast(options.ptlines, 'ptLine', ['id'])]
@@ -119,7 +128,7 @@ def createTrips(options):
         for trp_nr, line in enumerate(sumolib.output.parse(options.ptlines, 'ptLine')):
             stop_ids = []
             for stop in line.busStop:
-                if not stop.id in stopsLanes:
+                if stop.id not in stopsLanes:
                     sys.stderr.write("Warning: skipping unknown stop '%s'\n" % stop.id)
                     continue
                 laneId = stopsLanes[stop.id]
@@ -133,7 +142,7 @@ def createTrips(options):
                         sys.exit("Invalid lane '%s' for stop '%s'" % (laneId, stop.id))
                 stop_ids.append(stop.id)
 
-            if options.types is not None and not line.type in options.types:
+            if options.types is not None and line.type not in options.types:
                 if options.verbose:
                     print("Skipping line '%s' because it has type '%s'\n" % (line.id, line.type))
                 numSkipped += 1
@@ -156,7 +165,8 @@ def createTrips(options):
                 if len(edges) > 2:
                     vias = ' via="%s"' % (' '.join(edges[1:-1]))
                 fouttrips.write(
-                    '    <trip id="%s" type="%s%s" depart="%s" departLane="best" departPos="0" from="%s" to="%s"%s>\n' % (
+                    ('    <trip id="%s" type="%s%s" depart="%s" departLane="best" departPos="0" from="%s" ' +
+                     'to="%s"%s>\n') % (
                         tripID, options.vtypeprefix, line.type, begin, edges[0], edges[-1], vias))
             else:
                 if len(stop_ids) == 0:
@@ -166,7 +176,8 @@ def createTrips(options):
                 fr, _ = stopsLanes[stop_ids[0]].rsplit("_", 1)
                 to, _ = stopsLanes[stop_ids[-1]].rsplit("_", 1)
                 fouttrips.write(
-                    '    <trip id="%s" type="%s%s" depart="%s" departLane="best" departPos="0" from="%s" to="%s">\n' % (
+                    ('    <trip id="%s" type="%s%s" depart="%s" departLane="best" departPos="0" from="%s" ' +
+                     'to="%s">\n') % (
                         tripID, options.vtypeprefix, line.type, begin, fr, to))
 
             trpMap[tripID] = (lineRef, line.attr_name, line.completeness)
@@ -187,7 +198,7 @@ def createTrips(options):
 
 def runSimulation(options):
     print("running SUMO to determine actual departure times...")
-    subprocess.call([sumolib.checkBinary("sumo"), 
+    subprocess.call([sumolib.checkBinary("sumo"),
                      "-n", options.netfile,
                      "-r", options.trips,
                      "--begin", str(options.begin),
@@ -195,13 +206,15 @@ def runSimulation(options):
                      "--ignore-route-errors",
                      "--error-log", options.trips + ".errorlog",
                      "-a", options.ptstops,
-                     "--device.rerouting.adaptation-interval", "0", # ignore tls and traffic effects
+                     "--device.rerouting.adaptation-interval", "0",  # ignore tls and traffic effects
                      "--vehroute-output", options.routes,
                      "--stop-output", options.stopinfos, ])
     print("done.")
 
+
 def formatTime(seconds):
     return "%02i:%02i:%02i" % (seconds / 3600, (seconds % 3600) / 60, (seconds % 60))
+
 
 def createRoutes(options, trpMap, stopNames):
     print("creating routes...")
@@ -209,16 +222,17 @@ def createRoutes(options, trpMap, stopNames):
     for stop in sumolib.output.parse_fast(options.stopinfos, 'stopinfo', ['id', 'ended', 'busStop']):
         stopsUntil[(stop.id, stop.busStop)] = float(stop.ended)
 
-    ft = formatTime if options.hrtime else lambda x : x
+    ft = formatTime if options.hrtime else lambda x: x
 
     with codecs.open(options.outfile, 'w', encoding="UTF8") as foutflows:
         flows = []
-        actualDepart = {} # departure may be delayed when the edge is not yet empty
+        actualDepart = {}  # departure may be delayed when the edge is not yet empty
         sumolib.writeXMLHeader(
-            foutflows, "$Id$", "routes")
+            foutflows, "$Id$",
+            "routes")
         if not options.novtypes:
             writeTypes(foutflows, options.vtypeprefix)
-        lineCount = collections.defaultdict(int)
+        collections.defaultdict(int)
         for vehicle in sumolib.output.parse(options.routes, 'vehicle'):
             id = vehicle.id
             lineRef, name, completeness = trpMap[id]
@@ -228,7 +242,7 @@ def createRoutes(options, trpMap, stopNames):
                     edges = vehicle.route[0].edges
                 else:
                     edges = vehicle.routeDistribution[0].route[1].edges
-            except StandardError:
+            except BaseException:
                 if options.ignoreErrors:
                     sys.stderr.write("Warning: Could not parse edges for vehicle '%s'\n" % id)
                     continue
@@ -257,7 +271,8 @@ def createRoutes(options, trpMap, stopNames):
             line, name, completeness = trpMap[vehID]
             foutflows.write('    <flow id="%s" type="%s" route="%s" begin="%s" end="%s" period="%s" line="%s" %s>\n' % (
                 flowID, type, flowID, ft(begin), ft(begin + flow_duration), options.period, lineRef, options.flowattrs))
-            foutflows.write('        <param key="name" value=%s/>\n        <param key="completeness" value="%s"/>\n    </flow>\n' %
+            foutflows.write(('        <param key="name" value=%s/>\n        <param key="completeness" ' +
+                             'value="%s"/>\n    </flow>\n') %
                             (quoteattr(name), completeness))
         foutflows.write('</routes>\n')
 

@@ -46,7 +46,7 @@ class GNECalibratorFlowDialog : public GNEAdditionalDialog {
 
 public:
     /// @brief constructor
-    GNECalibratorFlowDialog(GNECalibratorFlow* editedCalibratorFlowParent, bool updatingElement);
+    GNECalibratorFlowDialog(GNEAdditional* editedCalibratorFlow, bool updatingElement);
 
     /// @brief destructor
     ~GNECalibratorFlowDialog();
@@ -69,12 +69,6 @@ public:
 protected:
     /// @brief FOX needs this
     GNECalibratorFlowDialog() {}
-
-    /// @brief interator to edited calibrator flow
-    GNECalibratorFlow* myEditedCalibratorFlow;
-
-    /// @brief flag to indicate if flow are being created or modified
-    bool myUpdatingElement;
 
     /// @brief flag to check if current calibrator flow is valid
     bool myCalibratorFlowValid;

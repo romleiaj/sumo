@@ -112,10 +112,12 @@ public:
         /** @brief Constructor
          * @param[in] parent The parent TraCI client which offers the connection
          */
-        TraCIScopeWrapper(TraCIAPI& parent, int cmdGetID, int cmdSetID) : 
+        TraCIScopeWrapper(TraCIAPI& parent, int cmdGetID, int cmdSetID, int subscribeID, int contextSubscribeID) :
             myParent(parent),
             myCmdGetID(cmdGetID),
-            myCmdSetID(cmdSetID)
+            myCmdSetID(cmdSetID),
+            mySubscribeID(subscribeID),
+            myContextSubscribeID(contextSubscribeID)
         {}
 
         /// @brief Destructor
@@ -127,13 +129,30 @@ public:
         /// @brief set generic paramter
         void setParameter(const std::string& objectID, const std::string& key, const std::string& value) const;
 
+        void subscribe(const std::string& objID, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime) const;
+        void subscribeContext(const std::string& objID, int domain, double range, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime) const;
+
+        const libsumo::SubscriptionResults getSubscriptionResults() const;
+        const libsumo::TraCIResults getSubscriptionResults(const std::string& objID) const;
+
+        const libsumo::ContextSubscriptionResults getContextSubscriptionResults() const;
+        const libsumo::SubscriptionResults getContextSubscriptionResults(const std::string& objID) const;
+
+        // the following are only for internal use
+        void clearSubscriptionResults();
+        libsumo::SubscriptionResults& getModifiableSubscriptionResults();
+        libsumo::SubscriptionResults& getModifiableContextSubscriptionResults(const std::string& objID);
+
 
     protected:
         /// @brief The parent TraCI client which offers the connection
         TraCIAPI& myParent;
-        int myCmdGetID; 
-        int myCmdSetID; 
-
+        int myCmdGetID;
+        int myCmdSetID;
+        int mySubscribeID;
+        int myContextSubscribeID;
+        libsumo::SubscriptionResults mySubscriptionResults;
+        libsumo::ContextSubscriptionResults myContextSubscriptionResults;
 
 
     private:
@@ -154,7 +173,7 @@ public:
      */
     class EdgeScope : public TraCIScopeWrapper {
     public:
-        EdgeScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_EDGE_VARIABLE, CMD_SET_EDGE_VARIABLE) {}
+        EdgeScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_EDGE_VARIABLE, CMD_SET_EDGE_VARIABLE, CMD_SUBSCRIBE_EDGE_VARIABLE, CMD_SUBSCRIBE_EDGE_CONTEXT) {}
         virtual ~EdgeScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -200,7 +219,7 @@ public:
      */
     class GUIScope : public TraCIScopeWrapper {
     public:
-        GUIScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_GUI_VARIABLE, CMD_SET_GUI_VARIABLE) {}
+        GUIScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_GUI_VARIABLE, CMD_SET_GUI_VARIABLE, CMD_SUBSCRIBE_GUI_VARIABLE, CMD_SUBSCRIBE_GUI_CONTEXT) {}
         virtual ~GUIScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -233,7 +252,7 @@ public:
      */
     class InductionLoopScope : public TraCIScopeWrapper {
     public:
-        InductionLoopScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_INDUCTIONLOOP_VARIABLE, -1) {}
+        InductionLoopScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_INDUCTIONLOOP_VARIABLE, -1, CMD_SUBSCRIBE_INDUCTIONLOOP_VARIABLE, CMD_SUBSCRIBE_INDUCTIONLOOP_CONTEXT) {}
         virtual ~InductionLoopScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -266,7 +285,7 @@ public:
      */
     class JunctionScope : public TraCIScopeWrapper {
     public:
-        JunctionScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_JUNCTION_VARIABLE, CMD_SET_JUNCTION_VARIABLE) {}
+        JunctionScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_JUNCTION_VARIABLE, CMD_SET_JUNCTION_VARIABLE, CMD_SUBSCRIBE_JUNCTION_VARIABLE, CMD_SUBSCRIBE_JUNCTION_CONTEXT) {}
         virtual ~JunctionScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -290,7 +309,7 @@ public:
      */
     class LaneScope : public TraCIScopeWrapper {
     public:
-        LaneScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_LANE_VARIABLE, CMD_SET_LANE_VARIABLE) {}
+        LaneScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_LANE_VARIABLE, CMD_SET_LANE_VARIABLE, CMD_SUBSCRIBE_LANE_VARIABLE, CMD_SUBSCRIBE_LANE_CONTEXT) {}
         virtual ~LaneScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -342,7 +361,7 @@ public:
     */
     class LaneAreaScope : public TraCIScopeWrapper {
     public:
-        LaneAreaScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_LANEAREA_VARIABLE, -1) {}
+        LaneAreaScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_LANEAREA_VARIABLE, -1, CMD_SUBSCRIBE_LANEAREA_VARIABLE, CMD_SUBSCRIBE_LANEAREA_CONTEXT) {}
         virtual ~LaneAreaScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -362,7 +381,7 @@ public:
      */
     class MeMeScope : public TraCIScopeWrapper {
     public:
-        MeMeScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_MULTIENTRYEXIT_VARIABLE, -1) {}
+        MeMeScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_MULTIENTRYEXIT_VARIABLE, -1, CMD_SUBSCRIBE_MULTIENTRYEXIT_VARIABLE, CMD_SUBSCRIBE_MULTIENTRYEXIT_CONTEXT) {}
         virtual ~MeMeScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -389,7 +408,7 @@ public:
      */
     class POIScope : public TraCIScopeWrapper {
     public:
-        POIScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_POI_VARIABLE, CMD_SET_POI_VARIABLE) {}
+        POIScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_POI_VARIABLE, CMD_SET_POI_VARIABLE, CMD_SUBSCRIBE_POI_VARIABLE, CMD_SUBSCRIBE_POI_CONTEXT) {}
         virtual ~POIScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -421,7 +440,7 @@ public:
      */
     class PolygonScope : public TraCIScopeWrapper {
     public:
-        PolygonScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_POLYGON_VARIABLE, CMD_SET_POLYGON_VARIABLE) {}
+        PolygonScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_POLYGON_VARIABLE, CMD_SET_POLYGON_VARIABLE, CMD_SUBSCRIBE_POLYGON_VARIABLE, CMD_SUBSCRIBE_POLYGON_CONTEXT) {}
         virtual ~PolygonScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -452,7 +471,7 @@ public:
      */
     class RouteScope : public TraCIScopeWrapper {
     public:
-        RouteScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_ROUTE_VARIABLE, CMD_SET_ROUTE_VARIABLE) {}
+        RouteScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_ROUTE_VARIABLE, CMD_SET_ROUTE_VARIABLE, CMD_SUBSCRIBE_ROUTE_VARIABLE, CMD_SUBSCRIBE_ROUTE_CONTEXT) {}
         virtual ~RouteScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -476,7 +495,7 @@ public:
      */
     class SimulationScope : public TraCIScopeWrapper {
     public:
-        SimulationScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_SIM_VARIABLE, CMD_SET_SIM_VARIABLE) {}
+        SimulationScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_SIM_VARIABLE, CMD_SET_SIM_VARIABLE, CMD_SUBSCRIBE_SIM_VARIABLE, CMD_SUBSCRIBE_SIM_CONTEXT) {}
         virtual ~SimulationScope() {}
 
         SUMOTime getCurrentTime() const;
@@ -493,15 +512,6 @@ public:
         SUMOTime getDeltaT() const;
         libsumo::TraCIBoundary getNetBoundary() const;
         int getMinExpectedNumber() const;
-
-        void subscribe(int domID, const std::string& objID, SUMOTime beginTime, SUMOTime endTime, const std::vector<int>& vars) const;
-        void subscribeContext(int domID, const std::string& objID, SUMOTime beginTime, SUMOTime endTime, int domain, double range, const std::vector<int>& vars) const;
-
-        const libsumo::SubscribedValues getSubscriptionResults() const;
-        const libsumo::TraCIValues getSubscriptionResults(const std::string& objID) const;
-
-        const libsumo::SubscribedContextValues getContextSubscriptionResults() const;
-        const libsumo::SubscribedValues getContextSubscriptionResults(const std::string& objID) const;
 
     private:
         /// @brief invalidated copy constructor
@@ -521,7 +531,7 @@ public:
      */
     class TrafficLightScope : public TraCIScopeWrapper {
     public:
-        TrafficLightScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_TL_VARIABLE, CMD_SET_TL_VARIABLE) {}
+        TrafficLightScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_TL_VARIABLE, CMD_SET_TL_VARIABLE, CMD_SUBSCRIBE_TL_VARIABLE, CMD_SUBSCRIBE_TL_CONTEXT) {}
         virtual ~TrafficLightScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -559,7 +569,7 @@ public:
      */
     class VehicleTypeScope : public TraCIScopeWrapper {
     public:
-        VehicleTypeScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_VEHICLETYPE_VARIABLE, CMD_SET_VEHICLETYPE_VARIABLE) {}
+        VehicleTypeScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_VEHICLETYPE_VARIABLE, CMD_SET_VEHICLETYPE_VARIABLE, CMD_SUBSCRIBE_VEHICLETYPE_VARIABLE, CMD_SUBSCRIBE_VEHICLETYPE_CONTEXT) {}
         virtual ~VehicleTypeScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -624,7 +634,7 @@ public:
      */
     class VehicleScope : public TraCIScopeWrapper {
     public:
-        VehicleScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_VEHICLE_VARIABLE, CMD_SET_VEHICLE_VARIABLE), 
+        VehicleScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_VEHICLE_VARIABLE, CMD_SET_VEHICLE_VARIABLE, CMD_SUBSCRIBE_VEHICLE_VARIABLE, CMD_SUBSCRIBE_VEHICLE_CONTEXT),
         LAST_TRAVEL_TIME_UPDATE(-1) {}
         virtual ~VehicleScope() {}
 
@@ -774,7 +784,7 @@ public:
      * */
     class PersonScope : public TraCIScopeWrapper {
     public:
-        PersonScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_PERSON_VARIABLE, CMD_SET_PERSON_VARIABLE) {}
+        PersonScope(TraCIAPI& parent) : TraCIScopeWrapper(parent, CMD_GET_PERSON_VARIABLE, CMD_SET_PERSON_VARIABLE, CMD_SUBSCRIBE_PERSON_VARIABLE, CMD_SUBSCRIBE_PERSON_CONTEXT) {}
         virtual ~PersonScope() {}
 
         std::vector<std::string> getIDList() const;
@@ -936,9 +946,9 @@ protected:
     void processGET(tcpip::Storage& inMsg, int command, int expectedType, bool ignoreCommandId = false) const;
     /// @}
 
-    void readVariableSubscription(tcpip::Storage& inMsg);
-    void readContextSubscription(tcpip::Storage& inMsg);
-    void readVariables(tcpip::Storage& inMsg, const std::string& objectID, int variableCount, libsumo::SubscribedValues& into);
+    void readVariableSubscription(int cmdId, tcpip::Storage& inMsg);
+    void readContextSubscription(int cmdId, tcpip::Storage& inMsg);
+    void readVariables(tcpip::Storage& inMsg, const std::string& objectID, int variableCount, libsumo::SubscriptionResults& into);
 
     template <class T>
     static inline std::string toString(const T& t, std::streamsize accuracy = PRECISION) {
@@ -953,11 +963,9 @@ protected:
     void closeSocket();
 
 protected:
+    std::map<int, TraCIScopeWrapper*> myDomains;
     /// @brief The socket
     tcpip::Socket* mySocket;
-
-    libsumo::SubscribedValues mySubscribedValues;
-    libsumo::SubscribedContextValues mySubscribedContextValues;
 };
 
 

@@ -54,14 +54,15 @@
 // member method definitions
 // ===========================================================================
 
-GNERerouter::GNERerouter(const std::string& id, GNEViewNet* viewNet, const Position &pos, const std::vector<GNEEdge*> &edges, const std::string& filename, double probability, bool off, double timeThreshold, bool blockMovement) :
-    GNEAdditional(id, viewNet, GLO_REROUTER, SUMO_TAG_REROUTER, true, blockMovement, edges),
+GNERerouter::GNERerouter(const std::string& id, GNEViewNet* viewNet, const Position &pos, const std::vector<GNEEdge*> &edges, const std::string& name, const std::string& filename, double probability, bool off, double timeThreshold, const std::string& vTypes, bool blockMovement) :
+    GNEAdditional(id, viewNet, GLO_REROUTER, SUMO_TAG_REROUTER, name, blockMovement, edges),
     myPosition(pos),
     myFilename(filename),
     myProbability(probability),
     myOff(off),
-    myTimeThreshold(timeThreshold) {
-}
+    myTimeThreshold(timeThreshold),
+    myVTypes(vTypes)
+{ }
 
 
 GNERerouter::~GNERerouter() {
@@ -120,101 +121,6 @@ GNERerouter::commitGeometryMoving(const Position& oldPos, GNEUndoList* undoList)
     undoList->p_begin("position of " + toString(getTag()));
     undoList->p_add(new GNEChange_Attribute(this, SUMO_ATTR_POSITION, toString(myPosition), true, toString(oldPos)));
     undoList->p_end();
-}
-
-
-void
-GNERerouter::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_ID);
-    writeAttribute(device, SUMO_ATTR_EDGES);
-    writeAttribute(device, SUMO_ATTR_PROB);
-    if (!myFilename.empty()) {
-        writeAttribute(device, SUMO_ATTR_FILE);
-    }
-    if (myTimeThreshold > 0) {
-        writeAttribute(device, SUMO_ATTR_HALTING_TIME_THRESHOLD);
-    }
-    writeAttribute(device, SUMO_ATTR_OFF);
-    writeAttribute(device, SUMO_ATTR_POSITION);
-
-    // write intervals and their values
-    for (auto i : myRerouterIntervals) {
-        i->writeRerouterInterval(device);
-    }
-    // Close tag
-    device.closeTag();
-}
-
-
-void
-GNERerouter::addRerouterInterval(GNERerouterInterval* rerouterInterval) {
-    auto it = std::find(myRerouterIntervals.begin(), myRerouterIntervals.end(), rerouterInterval);
-    if (it == myRerouterIntervals.end()) {
-        myRerouterIntervals.push_back(rerouterInterval);
-        // sort intervals always after a adding/restoring
-        sortIntervals();
-    } else {
-        throw ProcessError("Rerouter Interval already exist");
-    }
-}
-
-
-void
-GNERerouter::removeRerouterInterval(GNERerouterInterval* rerouterInterval) {
-    auto it = std::find(myRerouterIntervals.begin(), myRerouterIntervals.end(), rerouterInterval);
-    if (it != myRerouterIntervals.end()) {
-        myRerouterIntervals.erase(it);
-        // sort intervals always after a adding/restoring
-        sortIntervals();
-    } else {
-        throw ProcessError("Rerouter Interval doesn't exist");
-    }
-}
-
-
-const std::vector<GNERerouterInterval*>&
-GNERerouter::getRerouterIntervals() const {
-    return myRerouterIntervals;
-}
-
-
-int
-GNERerouter::getNumberOfOverlappedIntervals() const {
-    int numOverlappings = 0;
-    // iterate over intervals to save the number of overlappings
-    for (int i = 0; i < (int)(myRerouterIntervals.size() - 1); i++) {
-        if (myRerouterIntervals.at(i)->getEnd() > myRerouterIntervals.at(i + 1)->getBegin()) {
-            numOverlappings++;
-        } else if (myRerouterIntervals.at(i)->getEnd() > myRerouterIntervals.at(i + 1)->getEnd()) {
-            numOverlappings++;
-        }
-    }
-    // return number of overlappings found
-    return numOverlappings;
-}
-
-
-void
-GNERerouter::sortIntervals() {
-    // declare a vector to keep sorted intervals
-    std::vector<GNERerouterInterval*> sortedIntervals;
-    // sort intervals usin begin as criterium
-    while (myRerouterIntervals.size() > 0) {
-        int begin_small = 0;
-        // find the interval with the small begin
-        for (int i = 0; i < (int)myRerouterIntervals.size(); i++) {
-            if (myRerouterIntervals.at(i)->getBegin() < myRerouterIntervals.at(begin_small)->getBegin()) {
-                begin_small = i;
-            }
-        }
-        // add it to sortd intervals and remove it from myRerouterIntervals
-        sortedIntervals.push_back(myRerouterIntervals.at(begin_small));
-        myRerouterIntervals.erase(myRerouterIntervals.begin() + begin_small);
-    }
-    // restore myRerouterIntervals using sorted intervals
-    myRerouterIntervals = sortedIntervals;
 }
 
 
@@ -288,7 +194,6 @@ GNERerouter::drawGL(const GUIVisualizationSettings& s) const {
 
                 glPopMatrix();
             }
-            glPopName();
         }
 
         // Draw connections
@@ -311,12 +216,16 @@ GNERerouter::getAttribute(SumoXMLAttr key) const {
             return parseIDs(myEdgeChilds);
         case SUMO_ATTR_POSITION:
             return toString(myPosition);
+        case SUMO_ATTR_NAME:
+            return myAdditionalName;
         case SUMO_ATTR_FILE:
             return myFilename;
         case SUMO_ATTR_PROB:
             return toString(myProbability);
         case SUMO_ATTR_HALTING_TIME_THRESHOLD:
             return toString(myTimeThreshold);
+        case SUMO_ATTR_VTYPES:
+            return myVTypes;
         case SUMO_ATTR_OFF:
             return toString(myOff);
         case GNE_ATTR_BLOCK_MOVEMENT:
@@ -335,12 +244,22 @@ GNERerouter::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList
         return; //avoid needless changes, later logic relies on the fact that attributes have changed
     }
     switch (key) {
-        case SUMO_ATTR_ID:
+        case SUMO_ATTR_ID: {
+            // change ID of Rerouter Interval
+            undoList->p_add(new GNEChange_Attribute(this, key, value));
+            // Change Ids of all Rerouter interval childs
+            for (auto i : myAdditionalChilds) {
+                i->setAttribute(SUMO_ATTR_ID, generateAdditionalChildID(SUMO_TAG_INTERVAL), undoList);
+            }
+            break;
+        }
         case SUMO_ATTR_EDGES:
         case SUMO_ATTR_POSITION:
+        case SUMO_ATTR_NAME:
         case SUMO_ATTR_FILE:
         case SUMO_ATTR_PROB:
         case SUMO_ATTR_HALTING_TIME_THRESHOLD:
+        case SUMO_ATTR_VTYPES:
         case SUMO_ATTR_OFF:
         case GNE_ATTR_BLOCK_MOVEMENT:
         case GNE_ATTR_SELECTED:
@@ -361,16 +280,20 @@ GNERerouter::isValid(SumoXMLAttr key, const std::string& value) {
             if (value.empty()) {
                 return false;
             } else {
-                return canParse<std::vector<GNELane*> >(myViewNet->getNet(), value, false);
+                return canParse<std::vector<GNEEdge*> >(myViewNet->getNet(), value, false);
             }
         case SUMO_ATTR_POSITION:
             return canParse<Position>(value);
+        case SUMO_ATTR_NAME:
+            return isValidName(value);
         case SUMO_ATTR_FILE:
             return isValidFilename(value);
         case SUMO_ATTR_PROB:
             return canParse<double>(value) && (parse<double>(value) >= 0) && (parse<double>(value) <= 1);
         case SUMO_ATTR_HALTING_TIME_THRESHOLD:
             return canParse<double>(value) && (parse<double>(value) >= 0);
+        case SUMO_ATTR_VTYPES:
+            return true;
         case SUMO_ATTR_OFF:
             return canParse<bool>(value);
         case GNE_ATTR_BLOCK_MOVEMENT:
@@ -382,6 +305,21 @@ GNERerouter::isValid(SumoXMLAttr key, const std::string& value) {
     }
 }
 
+
+std::string 
+GNERerouter::getPopUpID() const {
+    return toString(getTag()) + ": " + getID();
+}
+
+
+std::string 
+GNERerouter::getHierarchyName() const {
+    return toString(getTag());
+}
+
+// ===========================================================================
+// private
+// ===========================================================================
 
 void
 GNERerouter::setAttribute(SumoXMLAttr key, const std::string& value) {
@@ -405,6 +343,9 @@ GNERerouter::setAttribute(SumoXMLAttr key, const std::string& value) {
         case SUMO_ATTR_POSITION:
             myPosition = parse<Position>(value);
             break;
+        case SUMO_ATTR_NAME:
+            myAdditionalName = value;
+            break;
         case SUMO_ATTR_FILE:
             myFilename = value;
             break;
@@ -413,6 +354,9 @@ GNERerouter::setAttribute(SumoXMLAttr key, const std::string& value) {
             break;
         case SUMO_ATTR_HALTING_TIME_THRESHOLD:
             myTimeThreshold = parse<double>(value);
+            break;
+        case SUMO_ATTR_VTYPES:
+            myVTypes = value;
             break;
         case SUMO_ATTR_OFF:
             myOff = parse<bool>(value);

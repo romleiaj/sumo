@@ -20,7 +20,7 @@ from __future__ import print_function
 
 import util.Path as path
 import util.Reader as reader
-from analysis.Taxi import *
+from analysis.Taxi import SOURCE_FCD, SOURCE_SIMFCD
 
 # global vars
 fcdEdgeDict = {}
@@ -132,6 +132,7 @@ def writeOutput():
             outputFile.write('%s;%.2f;%.2f;%.2f;%.2f\n' % (
                 edge, fcdEdgeDict[edge], vtypeEdgeDict[edge], absDeviation, relDeviation))
     outputFile.close()
+
 
 # start the program
 main()

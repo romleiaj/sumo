@@ -31,12 +31,15 @@ netedit.selectMode()
 # save selection
 netedit.loadSelection()
 
-#check undo-redo
+# check undo-redo
 netedit.undo(match, 1)
 netedit.redo(match, 1)
 
 # save shapes
 netedit.saveShapes()
 
+# save network
+netedit.saveNetwork()
+
 # quit netedit
-netedit.quit(neteditProcess, True)
+netedit.quit(neteditProcess)

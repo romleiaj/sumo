@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<!-- generated on Thu Jun 14 16:05:58 2018 by Eclipse SUMO netconvert Version d6f78cf
+<!-- generated on Tue Jun 26 11:12:41 2018 by Eclipse SUMO netconvert Version 267588b
 -->
 
 <configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/netconvertConfiguration.xsd">
@@ -522,6 +522,9 @@
         <!-- Disables building turnarounds at tls-controlled junctions -->
         <no-turnarounds.tls value="false" synonymes="no-tls-turnarounds" type="BOOL"/>
 
+        <!-- Disables building turnarounds except at dead end junctions -->
+        <no-turnarounds.except-deadend value="false" type="BOOL"/>
+
         <!-- Disables building connections to left -->
         <no-left-connections value="false" type="BOOL"/>
 
@@ -563,6 +566,9 @@
 
         <!-- Warn about edge geometries with a grade in % above FLOAT. The threshold applies to roads with a speed limit of 50km/h and is scaled according to road speed. -->
         <geometry.max-grade value="10" type="FLOAT"/>
+
+        <!-- Analyse topology of the railway network -->
+        <railway.topology.check value="false" type="BOOL"/>
 
         <!-- Turn off normalizing node positions -->
         <offset.disable-normalization value="false" synonymes="disable-normalize-node-positions" type="BOOL"/>
@@ -610,7 +616,7 @@
         <speed.minimum value="0" type="FLOAT"/>
 
         <!-- Generate INT intermediate points to smooth out intersection corners -->
-        <junctions.corner-detail value="0" type="INT"/>
+        <junctions.corner-detail value="5" type="INT"/>
 
         <!-- Generate INT intermediate points to smooth out lanes within the intersection -->
         <junctions.internal-link-detail value="5" type="INT"/>
@@ -623,6 +629,9 @@
 
         <!-- Limits speed on junctions by FLOAT times sqrt(turningRadius) -->
         <junctions.limit-turn-speed value="-1" type="FLOAT"/>
+
+        <!-- Default radius for junctions that do not require wide vehicle turns -->
+        <junctions.small-radius value="1.5" type="FLOAT"/>
 
         <!-- Forces rectangular cuts between lanes and intersections -->
         <rectangular-lane-cut value="false" type="BOOL"/>
@@ -685,7 +694,7 @@
         <default.junctions.keep-clear value="true" type="BOOL"/>
 
         <!-- The default turning radius of intersections -->
-        <default.junctions.radius value="1.5" type="FLOAT"/>
+        <default.junctions.radius value="4" type="FLOAT"/>
 
     </building_defaults>
 

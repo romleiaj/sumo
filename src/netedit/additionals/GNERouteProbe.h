@@ -41,18 +41,14 @@ public:
      * @param[in] viewNet pointer to GNEViewNet of this additional element belongs
      * @param[in] edge edge in which this routeProbe is placed
      * @param[in] frequency The frequency in which to report the distribution
+     * @oaran[in] name Route Probe Name
      * @param[in] filename The file for generated output
      * @param[in] begin The time at which to start generating output
      */
-    GNERouteProbe(const std::string& id, GNEViewNet* viewNet, GNEEdge* edge, const std::string &frequency, const std::string& filename, double begin);
+    GNERouteProbe(const std::string& id, GNEViewNet* viewNet, GNEEdge* edge, const std::string &frequency, const std::string& name, const std::string& filename, double begin);
 
     /// @brief Destructor
     ~GNERouteProbe();
-
-    /**@brief writte additional element into a xml file
-     * @param[in] device device in which write parameters of additional element
-     */
-    void writeAdditional(OutputDevice& device) const;
 
     /// @name Functions related with geometry of element
     /// @{
@@ -109,6 +105,12 @@ public:
      * @return true if the value is valid, false in other case
      */
     bool isValid(SumoXMLAttr key, const std::string& value);
+
+    /// @brief get PopPup ID (Used in AC Hierarchy)
+    std::string getPopUpID() const;
+
+    /// @brief get Hierarchy Name (Used in AC Hierarchy)
+    std::string getHierarchyName() const;
     /// @}
 
 protected:
@@ -126,9 +128,6 @@ protected:
 
     /// @brief route probe logo offset
     Position myRouteProbeLogoOffset;
-
-    /// @brief number of lanes of edge (To improve efficiency)
-    int myNumberOfLanes;
 
     /// @brief relative position regarding to other route probes
     int myRelativePositionY;

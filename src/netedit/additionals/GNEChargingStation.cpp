@@ -95,86 +95,6 @@ GNEChargingStation::updateGeometry() {
 
 
 void
-GNEChargingStation::writeAdditional(OutputDevice& device) const {
-    // Write additional
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_ID);
-    writeAttribute(device, SUMO_ATTR_LANE);
-    writeAttribute(device, SUMO_ATTR_STARTPOS);
-    writeAttribute(device, SUMO_ATTR_ENDPOS);
-    if (myName.empty() == false) {
-        writeAttribute(device, SUMO_ATTR_NAME);
-    }
-    writeAttribute(device, SUMO_ATTR_FRIENDLY_POS);
-    writeAttribute(device, SUMO_ATTR_CHARGINGPOWER);
-    writeAttribute(device, SUMO_ATTR_EFFICIENCY);
-    writeAttribute(device, SUMO_ATTR_CHARGEINTRANSIT);
-    writeAttribute(device, SUMO_ATTR_CHARGEDELAY);
-    // Close tag
-    device.closeTag();
-}
-
-
-double
-GNEChargingStation::getChargingPower() {
-    return myChargingPower;
-}
-
-
-double
-GNEChargingStation::getEfficiency() {
-    return myEfficiency;
-}
-
-
-bool
-GNEChargingStation::getChargeInTransit() {
-    return myChargeInTransit;
-}
-
-
-double
-GNEChargingStation::getChargeDelay() {
-    return myChargeDelay;
-}
-
-
-void
-GNEChargingStation::setChargingPower(double chargingPower) {
-    if (chargingPower > 0) {
-        myChargingPower = chargingPower;
-    } else {
-        throw InvalidArgument("Value of charging Power must be greater than 0");
-    }
-}
-
-
-void
-GNEChargingStation::setEfficiency(double efficiency) {
-    if (efficiency >= 0 && efficiency <= 1) {
-        myEfficiency = efficiency;
-    } else {
-        throw InvalidArgument("Value of efficiency must be between 0 and 1");
-    }
-}
-
-
-void
-GNEChargingStation::setChargeInTransit(bool chargeInTransit) {
-    myChargeInTransit = chargeInTransit;
-}
-
-
-void
-GNEChargingStation::setChargeDelay(double chargeDelay) {
-    if (chargeDelay < 0) {
-        throw InvalidArgument("Value of chargeDelay cannot be negative");
-    }
-    myChargeDelay = chargeDelay;
-}
-
-
-void
 GNEChargingStation::drawGL(const GUIVisualizationSettings& s) const {
     // obtain circle resolution
     int circleResolution = getCircleResolution(s);
@@ -263,8 +183,8 @@ GNEChargingStation::drawGL(const GUIVisualizationSettings& s) const {
     glPopMatrix();
     // Draw name if isn't being drawn for selecting
     drawName(getCenteringBoundary().getCenter(), s.scale, s.addName);
-    if (s.addFullName.show && (myName != "") && !s.drawForSelecting) {
-        GLHelper::drawText(myName, mySignPos, GLO_MAX - getType(), s.addFullName.scaledSize(s.scale), s.addFullName.color, myBlockIconRotation);
+    if (s.addFullName.show && (myAdditionalName != "") && !s.drawForSelecting) {
+        GLHelper::drawText(myAdditionalName, mySignPos, GLO_MAX - getType(), s.addFullName.scaledSize(s.scale), s.addFullName.color, myBlockIconRotation);
     }    
     // Pop name matrix
     glPopName();
@@ -283,7 +203,7 @@ GNEChargingStation::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_ENDPOS:
             return myEndPosition;
         case SUMO_ATTR_NAME:
-            return myName;
+            return myAdditionalName;
         case SUMO_ATTR_FRIENDLY_POS:
             return toString(myFriendlyPosition);
         case SUMO_ATTR_CHARGINGPOWER:
@@ -372,7 +292,7 @@ GNEChargingStation::isValid(SumoXMLAttr key, const std::string& value) {
                 }
             }
         case SUMO_ATTR_NAME:
-            return true;
+            return isValidName(value);
         case SUMO_ATTR_FRIENDLY_POS:
             return canParse<bool>(value);
         case SUMO_ATTR_CHARGINGPOWER:
@@ -412,7 +332,7 @@ GNEChargingStation::setAttribute(SumoXMLAttr key, const std::string& value) {
             myEndPosition = value;
             break;
         case SUMO_ATTR_NAME:
-            myName = value;
+            myAdditionalName = value;
             break;
         case SUMO_ATTR_FRIENDLY_POS:
             myFriendlyPosition = parse<bool>(value);

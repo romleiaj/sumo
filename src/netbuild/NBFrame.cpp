@@ -77,7 +77,7 @@ NBFrame::fillOptions(bool forNetgen) {
     oc.doRegister("default.junctions.keep-clear", new Option_Bool(true));
     oc.addDescription("default.junctions.keep-clear", "Building Defaults", "Whether junctions should be kept clear by default");
 
-    oc.doRegister("default.junctions.radius", new Option_Float(1.5));
+    oc.doRegister("default.junctions.radius", new Option_Float(4));
     oc.addDescription("default.junctions.radius", "Building Defaults", "The default turning radius of intersections");
 
     // register the data processing options
@@ -102,6 +102,9 @@ NBFrame::fillOptions(bool forNetgen) {
     oc.doRegister("no-turnarounds.tls", new Option_Bool(false));
     oc.addSynonyme("no-turnarounds.tls", "no-tls-turnarounds", true);
     oc.addDescription("no-turnarounds.tls", "Processing", "Disables building turnarounds at tls-controlled junctions");
+
+    oc.doRegister("no-turnarounds.except-deadend", new Option_Bool(false));
+    oc.addDescription("no-turnarounds.except-deadend", "Processing", "Disables building turnarounds except at dead end junctions");
 
     oc.doRegister("no-left-connections", new Option_Bool(false));
     oc.addDescription("no-left-connections", "Processing", "Disables building connections to left");
@@ -148,6 +151,9 @@ NBFrame::fillOptions(bool forNetgen) {
 
         oc.doRegister("geometry.max-grade", new Option_Float(10));
         oc.addDescription("geometry.max-grade", "Processing", "Warn about edge geometries with a grade in % above FLOAT. The threshold applies to roads with a speed limit of 50km/h and is scaled according to road speed.");
+
+        oc.doRegister("railway.topology.check", new Option_Bool(false));
+        oc.addDescription("railway.topology.check", "Processing", "Analyse topology of the railway network");
     }
 
     oc.doRegister("offset.disable-normalization", new Option_Bool(false));
@@ -205,7 +211,7 @@ NBFrame::fillOptions(bool forNetgen) {
         oc.addDescription("speed.minimum", "Processing", "Modifies all edge speeds to at least FLOAT");
     }
 
-    oc.doRegister("junctions.corner-detail", new Option_Integer(0));
+    oc.doRegister("junctions.corner-detail", new Option_Integer(5));
     oc.addDescription("junctions.corner-detail", "Processing", "Generate INT intermediate points to smooth out intersection corners");
 
     oc.doRegister("junctions.internal-link-detail", new Option_Integer(5));
@@ -221,6 +227,10 @@ NBFrame::fillOptions(bool forNetgen) {
     oc.doRegister("junctions.limit-turn-speed", new Option_Float(-1));
     oc.addDescription("junctions.limit-turn-speed", "Processing",
                       "Limits speed on junctions by FLOAT times sqrt(turningRadius)");
+
+    oc.doRegister("junctions.small-radius", new Option_Float(1.5));
+    oc.addDescription("junctions.small-radius", "Processing",
+                      "Default radius for junctions that do not require wide vehicle turns");
 
     oc.doRegister("rectangular-lane-cut", new Option_Bool(false));
     oc.addDescription("rectangular-lane-cut", "Processing", "Forces rectangular cuts between lanes and intersections");
@@ -508,6 +518,10 @@ NBFrame::checkOptions() {
         }
         // make sure the option is set so heuristics cannot ignore it
         oc.set("no-internal-links", "false");
+    }
+    if (oc.getFloat("junctions.small-radius") > oc.getFloat("default.junctions.radius")) {
+        WRITE_ERROR("option 'default.junctions.radius' cannot be smaller than option 'junctions.small-radius'");
+        ok = false;
     }
     return ok;
 }

@@ -512,6 +512,8 @@ enum SumoXMLAttr {
     SUMO_ATTR_GCC_GAIN_SPACE,
     SUMO_ATTR_GC_GAIN_SPEED,
     SUMO_ATTR_GC_GAIN_SPACE,
+    SUMO_ATTR_CA_GAIN_SPEED,
+    SUMO_ATTR_CA_GAIN_SPACE,
     /// @}
 
     /// @name Train model attributes
@@ -773,6 +775,7 @@ enum SumoXMLAttr {
     SUMO_ATTR_AMOUNT,
     SUMO_ATTR_ORIGIN,
     SUMO_ATTR_DESTINATION,
+    SUMO_ATTR_VISIBLE,
 
 
     /// @name ActivityGen Tags

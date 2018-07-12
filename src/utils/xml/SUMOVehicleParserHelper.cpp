@@ -372,6 +372,12 @@ SUMOVehicleParserHelper::beginVTypeParsing(const SUMOSAXAttributes& attrs, const
         vtype->speedFactor.getParameter()[1] = attrs.get<double>(SUMO_ATTR_SPEEDDEV, vtype->id.c_str(), ok);
         vtype->parametersSet |= VTYPEPARS_SPEEDFACTOR_SET;
     }
+    // validate speed distribution
+    std::string error;
+    if (!vtype->speedFactor.isValid(error)) {
+        WRITE_ERROR("Invalid speed distribution when parsing vType '" + vtype->id + "' (" + error + ")");
+        throw ProcessError();
+    }
     if (attrs.hasAttribute(SUMO_ATTR_ACTIONSTEPLENGTH)) {
         double actionStepLengthSecs = attrs.get<double>(SUMO_ATTR_ACTIONSTEPLENGTH, vtype->id.c_str(), ok);
         vtype->actionStepLength = processActionStepLength(actionStepLengthSecs);
@@ -386,7 +392,9 @@ SUMOVehicleParserHelper::beginVTypeParsing(const SUMOSAXAttributes& attrs, const
         vtype->parametersSet |= VTYPEPARS_EMISSIONCLASS_SET;
     }
     if (attrs.hasAttribute(SUMO_ATTR_IMPATIENCE)) {
-        if (attrs.get<std::string>(SUMO_ATTR_IMPATIENCE, vtype->id.c_str(), ok) == "off") {
+        // allow empty attribute because .sbx saves this only as float
+        bool ok2;
+        if (attrs.get<std::string>(SUMO_ATTR_IMPATIENCE, vtype->id.c_str(), ok2, false) == "off") {
             vtype->impatience = -std::numeric_limits<double>::max();
         } else {
             vtype->impatience = attrs.get<double>(SUMO_ATTR_IMPATIENCE, vtype->id.c_str(), ok);
@@ -649,6 +657,8 @@ SUMOVehicleParserHelper::getAllowedCFModelAttrs() {
         ACCParams.insert(SUMO_ATTR_GCC_GAIN_SPACE);
         ACCParams.insert(SUMO_ATTR_GC_GAIN_SPEED);
         ACCParams.insert(SUMO_ATTR_GC_GAIN_SPACE);
+        ACCParams.insert(SUMO_ATTR_CA_GAIN_SPEED);
+        ACCParams.insert(SUMO_ATTR_CA_GAIN_SPACE);
         allowedCFModelAttrs[SUMO_TAG_CF_ACC] = ACCParams;
         allParams.insert(ACCParams.begin(), ACCParams.end());
 

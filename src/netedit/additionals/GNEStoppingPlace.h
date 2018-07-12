@@ -53,11 +53,6 @@ public:
     /// @brief Destructor
     ~GNEStoppingPlace();
 
-    /**@brief writte additional element into a xml file
-     * @param[in] device device in which write parameters of additional element
-     */
-    virtual void writeAdditional(OutputDevice& device) const = 0;
-
     /// @brief get Lane
     GNELane* getLane() const;
 
@@ -125,6 +120,12 @@ public:
      * @return true if the value is valid, false in other case
      */
     virtual bool isValid(SumoXMLAttr key, const std::string& value) = 0;
+
+    /// @brief get PopPup ID (Used in AC Hierarchy)
+    std::string getPopUpID() const;
+
+    /// @brief get Hierarchy Name (Used in AC Hierarchy)
+    std::string getHierarchyName() const;
     /// @}
 
 protected:
@@ -136,9 +137,6 @@ protected:
 
     /// @brief The  position this stopping place is located at (optional, if empty takes the lane lenght)
     std::string myEndPosition;
-
-    /// @brief name of stoppingPlace
-    std::string myName;
 
     /// @brief Flag for friendly position
     bool myFriendlyPosition;

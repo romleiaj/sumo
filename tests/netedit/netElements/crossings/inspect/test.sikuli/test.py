@@ -35,13 +35,10 @@ netedit.setZoom("50", "50", "50")
 netedit.inspectMode()
 
 # inspect first crossing
-netedit.leftClick(match, 260, 225)
-
-# try to change ID (cannot be possible)
-netedit.modifyAttribute(0, "dummyID")
+netedit.leftClick(match, 250, 225)
 
 # Change Edges adding a new edge
-netedit.modifyAttribute(1, "3 7 1")
+netedit.modifyAttribute(0, "3 7 1")
 
 # rebuild network
 netedit.rebuildNetwork()
@@ -51,16 +48,16 @@ netedit.leftClick(match, 295, 225)
 
 # Change Edges with the same edges as another crossing (Duplicate
 # crossings aren't allowed, see Ticket #4043
-netedit.modifyAttribute(1, "4 8")
+netedit.modifyAttribute(0, "4 8")
 
 # rebuild network
 netedit.rebuildNetwork()
 
 # inspect crossing again after recomputing
-netedit.leftClick(match, 390, 225)
+netedit.leftClick(match, 405, 225)
 
 # Change Edges to a single edge
-netedit.modifyAttribute(1, "3")
+netedit.modifyAttribute(0, "3")
 
 # rebuild network
 netedit.rebuildNetwork()
@@ -69,28 +66,28 @@ netedit.rebuildNetwork()
 netedit.leftClick(match, 260, 200)
 
 # Change priority
-netedit.modifyBoolAttribute(2)
+netedit.modifyBoolAttribute(1)
 
 # Change width with a non valid value 1
-netedit.modifyAttribute(3, "dummyWidth")
+netedit.modifyAttribute(2, "dummyWidth")
 
 # Change width with a non valid value 2
-netedit.modifyAttribute(3, "-3")
+netedit.modifyAttribute(2, "-3")
 
 # Change width with a valid value
-netedit.modifyAttribute(3, "4")
+netedit.modifyAttribute(2, "4")
 
 # rebuild network
 netedit.rebuildNetwork()
 
 # Check undos
-netedit.undo(match, 3)
+netedit.undo(match, 5)
 
 # rebuild network
 netedit.rebuildNetwork()
 
 # Check redos
-netedit.redo(match, 3)
+netedit.redo(match, 5)
 
 # save network
 netedit.saveNetwork()

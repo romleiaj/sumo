@@ -5,6 +5,7 @@ option(CHECK_OPTIONAL_LIBS "Try to download / enable all optional libraries" tru
 option(MULTITHREADED_BUILD "Use all available cores for building" true)
 
 project(SUMO)
+set(PACKAGE_VERSION "git")
 cmake_minimum_required(VERSION 3.1)
 # do not expand quoted variables in if statements
 cmake_policy(SET CMP0054 NEW)
@@ -114,9 +115,9 @@ if (SUMO_LIBRARIES)
     # set GoogleTest
     # Prevent GoogleTest from overriding our compiler/linker options
     set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-    add_subdirectory("${SUMO_LIBRARIES}/googletest-1.8.0${LIB_VERSION}/googletest"
+    add_subdirectory("${SUMO_LIBRARIES}/googletest-1.8.0/googletest"
                      "${CMAKE_BINARY_DIR}/googletest-build")
-    include_directories("${SUMO_LIBRARIES}/googletest-1.8.0${LIB_VERSION}/googletest/include")
+    include_directories("${SUMO_LIBRARIES}/googletest-1.8.0/googletest/include")
     set(GTEST_BOTH_LIBRARIES "gtest" "gtest_main")
     set(GTEST_FOUND true)
     # set FFMPEG
@@ -235,11 +236,50 @@ set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
 
 add_subdirectory(src)
 if (GTEST_FOUND)
+    enable_testing()
     add_subdirectory(unittest)
 endif ()
 
-install(DIRECTORY data/ DESTINATION share/sumo/data) 
-install(DIRECTORY tools/ DESTINATION share/sumo/tools) 
-install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/bin $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/sumo/bin)")
+# installation
+install(DIRECTORY data/ DESTINATION share/sumo/data)
+install(DIRECTORY tools/ DESTINATION share/sumo/tools
+        PATTERN "calibration" EXCLUDE
+        PATTERN "lisum" EXCLUDE
+        PATTERN "sumolib4matlab/src" EXCLUDE
+        PATTERN "traas" EXCLUDE
+        PATTERN "traci4matlab/src" EXCLUDE
+        PATTERN ".git" EXCLUDE
+       )
+install(CODE "execute_process(COMMAND ${CMAKE_COMMAND} -E create_symlink ../../bin $ENV{DESTDIR}${CMAKE_INSTALL_PREFIX}/share/sumo/bin)")
 
+# custom targets
+add_custom_target(examples COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/tools/extractTest.py -x -f ${CMAKE_SOURCE_DIR}/tests/examples.txt -p ${CMAKE_SOURCE_DIR}/docs/examples/runAll.py)
+add_test(exampletest ${PYTHON_EXECUTABLE} ${CMAKE_SOURCE_DIR}/docs/examples/runAll.py)
+find_package(Git)
+if (GIT_FOUND)
+    add_custom_target(dist DEPENDS examples
+        COMMAND rm -rf sumo-${PACKAGE_VERSION} sumo-${PACKAGE_VERSION}.zip sumo-src-${PACKAGE_VERSION}.tar.gz
+        COMMAND ${GIT_EXECUTABLE} archive --prefix sumo-${PACKAGE_VERSION}/ -o sumo-${PACKAGE_VERSION}.zip HEAD
+        COMMAND unzip sumo-${PACKAGE_VERSION}.zip
+        COMMAND cp -a docs/tutorial docs/examples sumo-${PACKAGE_VERSION}/docs
+        COMMAND zip -r sumo-src-${PACKAGE_VERSION}.zip sumo-${PACKAGE_VERSION}
+        COMMAND tar czf sumo-src-${PACKAGE_VERSION}.tar.gz sumo-${PACKAGE_VERSION}
+        COMMAND rm -rf sumo-${PACKAGE_VERSION} sumo-${PACKAGE_VERSION}.zip
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_property(TARGET dist PROPERTY FOLDER "CMake") 
+    set_property(TARGET dist PROPERTY EXCLUDE_FROM_DEFAULT_BUILD TRUE)
+
+    add_custom_target(distcheck DEPENDS dist
+        COMMAND rm -rf sumo-${PACKAGE_VERSION}
+        COMMAND unzip sumo-src-${PACKAGE_VERSION}.zip
+        COMMAND cd sumo-${PACKAGE_VERSION} && mkdir _cmake_build _cmake_install && cd _cmake_build
+                && cmake -DCMAKE_INSTALL_PREFIX=../_cmake_install .. || (echo "ERROR: the cmake configuration failed." && false)
+                && make -j8 || (echo "ERROR: the compilation failed." && false)
+                && make test || (echo "ERROR: the test suite failed." && false)
+                && make install || (echo "ERROR: the install target failed." && false)
+        COMMAND rm -rf sumo-${PACKAGE_VERSION}
+        WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+    set_property(TARGET distcheck PROPERTY FOLDER "CMake") 
+    set_property(TARGET distcheck PROPERTY EXCLUDE_FROM_DEFAULT_BUILD TRUE)
+endif ()
 message(STATUS "Enabled features: ${ENABLED_FEATURES}")

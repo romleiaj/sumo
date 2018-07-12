@@ -18,7 +18,7 @@
 from __future__ import absolute_import
 from __future__ import print_function
 
-from pylab import *
+from pylab import bar, plot, show, xlim, ylim
 
 
 # global vars
@@ -201,7 +201,7 @@ def processData():
             for j in data[vid]["simFCD"]:
                 if elm[1] == j[1]:  # if edge FCD same as edge simFCD
                     if len(elm) > 5:
-                        a = 1
+                        pass
                         # hier passiert nichts!
     # 					e[-2] = j[2]
     # 					e[-1] = j[0]
@@ -311,7 +311,6 @@ def plotScatterRel():
 
 
 def plotBarChart(mode="relDiff"):
-    l = []
     barsDict = {}
     i = 0
     print("total", len(data))
@@ -330,7 +329,7 @@ def plotBarChart(mode="relDiff"):
         # else:
         # print travelTimeDict[mode]*100
         # i+=1
-    b = bar(barsDict.keys(), barsDict.values(), width=10, alpha=0.5)
+    bar(barsDict.keys(), barsDict.values(), width=10, alpha=0.5)
     # hist(l, bins=41)
     # savefig(mainPath+"norm_abw_hist.png")
     print("over100", i)

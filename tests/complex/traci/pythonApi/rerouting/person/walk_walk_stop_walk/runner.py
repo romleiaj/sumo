@@ -17,22 +17,21 @@
 from __future__ import print_function
 from __future__ import absolute_import
 import os
-import subprocess
 import sys
-import random
 sys.path.append(os.path.join(
     os.path.dirname(sys.argv[0]), "..", "..", "..", "..", "..", "..", "..", "tools"))
 
-import traci
+import traci  # noqa
 import sumolib  # noqa
 
 sumoBinary = sumolib.checkBinary('sumo')
-cmd = [sumoBinary,
+cmd = [
+    sumoBinary,
     "-n", "input_net2.net.xml",
     "-r", "input_routes.rou.xml",
     "--fcd-output", "fcd.xml",
     "--vehroute-output", "vehroutes.xml",
-    "--no-step-log"] 
+    "--no-step-log"]
 traci.start(cmd)
 
 
@@ -40,6 +39,7 @@ def step():
     s = traci.simulation.getCurrentTime() / 1000
     traci.simulationStep()
     return s
+
 
 p = "p0"
 s = step()

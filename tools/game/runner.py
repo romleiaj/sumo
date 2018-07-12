@@ -33,15 +33,13 @@ from optparse import OptionParser
 from xml.dom import pulldom
 from collections import defaultdict
 
-try:
-    import httplib
-except:
-    pass
-
+_UPLOAD = False if "noupload" in sys.argv else True
 _SCOREFILE = "scores.pkl"
-_SCORESERVER = "sumo.dlr.de"
-_SCORESCRIPT = "/scores.php?game=TLS&"
-_DEBUG = True
+if _UPLOAD:
+    _TIMEOUT = 5
+    _SCORESERVER = "sumo.dlr.de"
+    _SCORESCRIPT = "/scores.php?game=TLS&"
+_DEBUG = True if "debug" in sys.argv else False
 _SCORES = 30
 
 _LANGUAGE_EN = {'title': 'Interactive Traffic Light',
@@ -85,6 +83,28 @@ _LANGUAGE_DE = {'title': 'Interaktives Ampelspiel',
                 'Continue': 'Weiter',
                 }
 
+
+def printDebug(*args):
+    if _DEBUG:
+        print("DEBUG:", end=" ")
+        for message in args:
+            print(message, end=" ")
+        print()
+
+
+if _UPLOAD:
+    print("Highscore upload is enabled. To disable call this script with 'noupload' argument.")
+    printDebug("import httplib...")
+    try:
+        import httplib
+        printDebug("SUCCESS")
+    except BaseException:
+        printDebug()("FAILED - disabling upload...")
+        _UPLOAD = False
+else:
+    print("Upload is disabled. To enable highscore upload, call this script without 'noupload' argument.")
+
+
 def computeScoreFromWaitingTime(gamename):
     totalDistance = 0
     totalFuel = 0
@@ -113,6 +133,7 @@ def computeScoreFromWaitingTime(gamename):
     score = 10000 - totalWaitingTime
     return score, totalArrived, complete
 
+
 def computeScoreFromTimeLoss(gamename):
     totalArrived = 0
     timeLoss = None
@@ -122,7 +143,7 @@ def computeScoreFromTimeLoss(gamename):
     running = None
     waiting = None
     completed = False
-    
+
     for line in open(gamename + ".log"):
         if "Simulation ended at time" in line:
             completed = True
@@ -151,37 +172,41 @@ def computeScoreFromTimeLoss(gamename):
         if _DEBUG:
             print("timeLoss=%s departDelay=%s departDelayWaiting=%s inserted=%s running=%s waiting=%s" % (
                 timeLoss, departDelay, departDelayWaiting, inserted, running, waiting))
-        
-        score = 10000 - int(100 * ((timeLoss + departDelay) * inserted + departDelayWaiting * waiting) / (inserted + waiting))
+
+        score = 10000 - int(100 * ((timeLoss + departDelay) * inserted +
+                                   departDelayWaiting * waiting) / (inserted + waiting))
         return score, totalArrived, True
 
 
-_SCORING_FUNCTION = defaultdict(lambda : computeScoreFromWaitingTime)
+_SCORING_FUNCTION = defaultdict(lambda: computeScoreFromWaitingTime)
 _SCORING_FUNCTION.update({
-                'A10KW': computeScoreFromTimeLoss,
-                })
+    'A10KW': computeScoreFromTimeLoss,
+})
 
 
 def loadHighscore():
-    try:
-        conn = httplib.HTTPConnection(_SCORESERVER)
-        conn.request("GET", _SCORESCRIPT + "top=" + str(_SCORES))
-        response = conn.getresponse()
-        if response.status == httplib.OK:
-            scores = {}
-            for line in response.read().splitlines():
-                category, values = line.split()
-                scores[category] = _SCORES * [("", "", -1.)]
-                for idx, item in enumerate(values.split(':')):
-                    name, game, score = item.split(',')
-                    scores[category][idx] = (name, game, int(float(score)))
-            return scores
-    except:
-        pass
+    if _UPLOAD:
+        printDebug("try to load highscore from scoreserver...")
+        try:
+            conn = httplib.HTTPConnection(_SCORESERVER, timeout=_TIMEOUT)
+            conn.request("GET", _SCORESCRIPT + "top=" + str(_SCORES))
+            response = conn.getresponse()
+            if response.status == httplib.OK:
+                scores = {}
+                for line in response.read().splitlines():
+                    category, values = line.split()
+                    scores[category] = _SCORES * [("", "", -1.)]
+                    for idx, item in enumerate(values.split(':')):
+                        name, game, score = item.split(',')
+                        scores[category][idx] = (name, game, int(float(score)))
+                printDebug("SUCCESS")
+                return scores
+        except Exception:
+            printDebug("FAILED")
 
     try:
         return pickle.load(open(_SCOREFILE))
-    except:
+    except Exception:
         pass
     return {}
 
@@ -244,8 +269,9 @@ class StartDialog(Tkinter.Frame):
             button.grid(row=row, column=COL_START)
 
             button = Tkinter.Button(self, width=bWidth_high,
-                                    command=lambda cfg=cfg: ScoreDialog(self, [],
-                                                                        None, self.category_name(cfg), self._language_text))  # .grid(row=row, column=COL_HIGH)
+                                    command=lambda cfg=cfg: ScoreDialog(self, [], None, self.category_name(cfg),
+                                                                        self._language_text)
+                                    )  # .grid(row=row, column=COL_HIGH)
             self.addButton(button, 'high')
             button.grid(row=row, column=COL_HIGH)
 
@@ -297,8 +323,7 @@ class StartDialog(Tkinter.Frame):
             [guisimPath, "-S", "-G", "-Q", "-c", cfg, '-l', 'log',
                 '--output-prefix', "%s." % self.category,
                 '--duration-log.statistics',
-                '--tripinfo-output.write-unfinished']
-            , stderr=sys.stderr)
+                '--tripinfo-output.write-unfinished'], stderr=sys.stderr)
 
         if _DEBUG:
             print("ended", cfg)
@@ -324,8 +349,6 @@ class StartDialog(Tkinter.Frame):
             print(switch, score, totalArrived, complete)
         if complete:
             ScoreDialog(self, switch, score, self.category, lang)
-
-
 
         # if ret != 0:
         # quit on error
@@ -408,27 +431,33 @@ class ScoreDialog:
                 f = open(_SCOREFILE, 'w')
                 pickle.dump(high, f)
                 f.close()
-            except:
+            except Exception:
                 pass
-            try:
-                conn = httplib.HTTPConnection(_SCORESERVER)
-                conn.request("GET", _SCORESCRIPT + "category=%s&name=%s&instance=%s&points=%s" % (
-                    self.category, name, "_".join(self.switch), self.score))
-                if _DEBUG:
-                    r1 = conn.getresponse()
-                    print(r1.status, r1.reason, r1.read())
-            except:
-                pass
+
+            if _UPLOAD:
+                printDebug("try to upload score...")
+                try:
+                    conn = httplib.HTTPConnection(_SCORESERVER, timeout=_TIMEOUT)
+                    conn.request("GET", _SCORESCRIPT + "category=%s&name=%s&instance=%s&points=%s" % (
+                        self.category, name, "_".join(self.switch), self.score))
+                    if _DEBUG:
+                        r1 = conn.getresponse()
+                        print(r1.status, r1.reason, r1.read())
+                    printDebug("SUCCESS")
+                except BaseException:
+                    printDebug("FAILED")
         self.quit()
 
     def quit(self, event=None):
         self.root.destroy()
 
+
 stereoModes = (
     'ANAGLYPHIC', 'QUAD_BUFFER', 'VERTICAL_SPLIT', 'HORIZONTAL_SPLIT')
 optParser = OptionParser()
 optParser.add_option("-s", "--stereo", metavar="OSG_STEREO_MODE",
-                     help="Defines the stereo mode to use for 3D output; unique prefix of %s" % (", ".join(stereoModes)))
+                     help="Defines the stereo mode to use for 3D output; unique prefix of %s" % (
+                           ", ".join(stereoModes)))
 options, args = optParser.parse_args()
 
 base = os.path.dirname(sys.argv[0])
@@ -469,6 +498,6 @@ else:
 root = Tkinter.Tk()
 IMAGE.dlrLogo = Tkinter.PhotoImage(file='dlr.gif')
 IMAGE.sumoLogo = Tkinter.PhotoImage(file='logo.gif')
-IMAGE.qrCode = Tkinter.PhotoImage(file='dlr_lndw_15_ts_4.gif')
+IMAGE.qrCode = Tkinter.PhotoImage(file='qr_sumo.dlr.de.gif')
 start = StartDialog(root, lang)
 root.mainloop()

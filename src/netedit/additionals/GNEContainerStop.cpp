@@ -92,32 +92,6 @@ GNEContainerStop::updateGeometry() {
 
 
 void
-GNEContainerStop::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_ID);
-    writeAttribute(device, SUMO_ATTR_LANE);
-    writeAttribute(device, SUMO_ATTR_STARTPOS);
-    writeAttribute(device, SUMO_ATTR_ENDPOS);
-    if (myName.empty() == false) {
-        writeAttribute(device, SUMO_ATTR_NAME);
-    }
-    writeAttribute(device, SUMO_ATTR_FRIENDLY_POS);
-    if (myLines.size() > 0) {
-        writeAttribute(device, SUMO_ATTR_LINES);
-    }
-    // Close tag
-    device.closeTag();
-}
-
-
-const std::vector<std::string>&
-GNEContainerStop::getLines() const {
-    return myLines;
-}
-
-
-void
 GNEContainerStop::drawGL(const GUIVisualizationSettings& s) const {
     // obtain circle resolution
     int circleResolution = getCircleResolution(s);
@@ -231,7 +205,7 @@ GNEContainerStop::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_ENDPOS:
             return myEndPosition;
         case SUMO_ATTR_NAME:
-            return myName;
+            return myAdditionalName;
         case SUMO_ATTR_FRIENDLY_POS:
             return toString(myFriendlyPosition);
         case SUMO_ATTR_LINES:
@@ -311,7 +285,7 @@ GNEContainerStop::isValid(SumoXMLAttr key, const std::string& value) {
                 }
             }
         case SUMO_ATTR_NAME:
-            return true;
+            return isValidName(value);
         case SUMO_ATTR_FRIENDLY_POS:
             return canParse<bool>(value);
         case SUMO_ATTR_LINES:
@@ -345,7 +319,7 @@ GNEContainerStop::setAttribute(SumoXMLAttr key, const std::string& value) {
             myEndPosition = value;
             break;
         case SUMO_ATTR_NAME:
-            myName = value;
+            myAdditionalName = value;
             break;
         case SUMO_ATTR_FRIENDLY_POS:
             myFriendlyPosition = parse<bool>(value);

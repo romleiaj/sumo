@@ -92,57 +92,6 @@ GNEBusStop::updateGeometry() {
 
 
 void
-GNEBusStop::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_ID);
-    writeAttribute(device, SUMO_ATTR_LANE);
-    writeAttribute(device, SUMO_ATTR_STARTPOS);
-    writeAttribute(device, SUMO_ATTR_ENDPOS);
-    if (myName.empty() == false) {
-        writeAttribute(device, SUMO_ATTR_NAME);
-    }
-    writeAttribute(device, SUMO_ATTR_FRIENDLY_POS);
-    if (myLines.size() > 0) {
-        writeAttribute(device, SUMO_ATTR_LINES);
-    }
-    // Write Access
-    for (auto i : myAdditionalChilds) {
-        i->writeAdditional(device);
-    }
-    // Close tag
-    device.closeTag();
-}
-
-
-const std::vector<std::string>&
-GNEBusStop::getLines() const {
-    return myLines;
-}
-
-
-std::string 
-GNEBusStop::generateAccessID() const {
-    int counter = 0;
-    while (myViewNet->getNet()->getAdditional(SUMO_TAG_ACCESS, getID() + toString(SUMO_TAG_ACCESS) + toString(counter)) != nullptr) {
-        counter++;
-    }
-    return (getID() + toString(SUMO_TAG_ACCESS) + toString(counter));
-}
-
- 
-bool 
-GNEBusStop::accessCanBeCreated(GNEEdge &edge) const {
-    for (auto i : myAdditionalChilds) {
-        if (dynamic_cast<GNEAccess*>(i)->getEdge().getID() == edge.getID()) {
-            return false;
-        }
-    }
-    return true;
-}
-
-
-void
 GNEBusStop::drawGL(const GUIVisualizationSettings& s) const {
     // obtain circle resolution
     int circleResolution = getCircleResolution(s);
@@ -241,8 +190,8 @@ GNEBusStop::drawGL(const GUIVisualizationSettings& s) const {
     glPopMatrix();
     // Draw name if isn't being drawn for selecting
     drawName(getCenteringBoundary().getCenter(), s.scale, s.addName);
-    if (s.addFullName.show && (myName != "") && !s.drawForSelecting) {
-        GLHelper::drawText(myName, mySignPos, GLO_MAX - getType(), s.addFullName.scaledSize(s.scale), s.addFullName.color, myBlockIconRotation);
+    if (s.addFullName.show && (myAdditionalName != "") && !s.drawForSelecting) {
+        GLHelper::drawText(myAdditionalName, mySignPos, GLO_MAX - getType(), s.addFullName.scaledSize(s.scale), s.addFullName.color, myBlockIconRotation);
     }
     // Pop name
     glPopName();
@@ -261,7 +210,7 @@ GNEBusStop::getAttribute(SumoXMLAttr key) const {
         case SUMO_ATTR_ENDPOS:
             return myEndPosition;
         case SUMO_ATTR_NAME:
-            return myName;
+            return myAdditionalName;
         case SUMO_ATTR_FRIENDLY_POS:
             return toString(myFriendlyPosition);
         case SUMO_ATTR_LINES:
@@ -287,7 +236,7 @@ GNEBusStop::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoList*
             undoList->p_add(new GNEChange_Attribute(this, key, value));
             // Change Ids of all Acces childs
             for (auto i : myAdditionalChilds) {
-                i->setAttribute(SUMO_ATTR_ID, generateAccessID(), undoList);
+                i->setAttribute(SUMO_ATTR_ID, generateAdditionalChildID(SUMO_TAG_ACCESS), undoList);
             }
             break;
         }
@@ -349,7 +298,7 @@ GNEBusStop::isValid(SumoXMLAttr key, const std::string& value) {
                 }
             }
         case SUMO_ATTR_NAME:
-            return true;
+            return isValidName(value);
         case SUMO_ATTR_FRIENDLY_POS:
             return canParse<bool>(value);
         case SUMO_ATTR_LINES:
@@ -383,7 +332,7 @@ GNEBusStop::setAttribute(SumoXMLAttr key, const std::string& value) {
             myEndPosition = value;
             break;
         case SUMO_ATTR_NAME:
-            myName = value;
+            myAdditionalName = value;
             break;
         case SUMO_ATTR_FRIENDLY_POS:
             myFriendlyPosition = parse<bool>(value);
@@ -408,11 +357,11 @@ GNEBusStop::setAttribute(SumoXMLAttr key, const std::string& value) {
     updateGeometry();
 }
 
+/*
 void 
 GNEBusStop::addAccess(GNELane* lane, double pos, bool friendlyPos, double length) {
-    /*
     myAccess.push_back(Access(lane, pos, friendlyPos, length));
-    */
 }
+*/
 
 /****************************************************************************/

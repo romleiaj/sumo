@@ -16,8 +16,9 @@ environment:
           configuration: Release
 
 install:
-    - git clone https://github.com/DLR-TS/SUMOLibraries
-    - set SUMO_LIBRARIES=%CD%\SUMOLibraries
+    - curl -fsS -o SUMOLibraries-master.zip https://codeload.github.com/DLR-TS/SUMOLibraries/zip/master
+    - 7z x SUMOLibraries-master.zip
+    - set SUMO_LIBRARIES=%CD%\SUMOLibraries-master
 
 build_script:
     - cd %APPVEYOR_BUILD_FOLDER%
@@ -29,3 +30,6 @@ build_script:
 # maybe enable later but for now it probably exceeds the cache limit of 1GB
 #cache:
 #    - SUMOLibraries
+
+matrix:
+    fast_finish: true

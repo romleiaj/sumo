@@ -105,7 +105,7 @@ def extract(mergedPopulationFile, mappedSiteFile, intersectionFile):
                     print("merge!")
 
     root = ET.Element('additional')
-    outTree = ET.ElementTree(root)
+    ET.ElementTree(root)
     i = 1
     for G in Schnittmenge:
         poly = ET.SubElement(root, 'poly')
@@ -174,8 +174,10 @@ generateTraffic.generate(
 print("calling sumo")
 sys.stdout.flush()
 sumo = sumolib.checkBinary('sumo')
-sumoOptions = [sumo, '-n', "%s.net.xml" % prefix, '-a', "%s.poly.xml,inputLocations.poi.xml,%s" % (prefix, mappedSiteFile),
-               '-r', '%s.rou.xml' % prefix, '--ignore-route-errors', '--no-step-log', '--save-configuration', '%s.sumocfg' % prefix]
+sumoOptions = [sumo, '-n', "%s.net.xml" % prefix,
+               '-a', "%s.poly.xml,inputLocations.poi.xml,%s" % (prefix, mappedSiteFile),
+               '-r', '%s.rou.xml' % prefix, '--ignore-route-errors', '--no-step-log',
+               '--save-configuration', '%s.sumocfg' % prefix]
 subprocess.call(sumoOptions)
 subprocess.call([sumo, '%s.sumocfg' % prefix])
 # subprocess.call([sumolib.checkBinary('sumo-gui'), '%s.sumocfg' % prefix])

@@ -402,6 +402,7 @@ MSPModel_Striping::getNextLane(const PState& ped, const MSLane* currentLane, con
         if (currentEdge->isInternal()) {
             assert(junction == currentEdge->getFromJunction());
             nextDir = junction == nextRouteEdge->getFromJunction() ? FORWARD : BACKWARD;
+            nextLane = nextRouteLane;
             if DEBUGCOND(ped) {
                 std::cout << "  internal\n";
             }
@@ -466,6 +467,7 @@ MSPModel_Striping::getNextLane(const PState& ped, const MSLane* currentLane, con
                 WRITE_WARNING("Person '" + ped.myPerson->getID() + "' could not find route across junction '" + junction->getID() + "', time=" +
                               time2string(MSNet::getInstance()->getCurrentTimeStep()) + ".");
                 // error indicated by nextDir == UNDEFINED_DIRECTION
+                nextLane = nextRouteLane;
             }
         } else if (currentEdge == nextRouteEdge) {
             // strange loop in this route. No need to use walkingArea
@@ -525,6 +527,7 @@ MSPModel_Striping::getNextLane(const PState& ped, const MSLane* currentLane, con
                   << " pedDir=" << ped.myDir
                   << "\n";
     }
+    assert(nextLane != 0 || nextRouteLane == 0);
     return NextLaneInfo(nextLane, link, nextDir);
 }
 
@@ -908,7 +911,7 @@ MSPModel_Striping::moveInDirectionOnLane(Pedestrians& pedestrians, const MSLane*
             gDebugFlag1 = true;
             std::cout << "   link=" << (link == nullptr ? "NULL" : link->getViaLaneOrLane()->getID()) 
                 << " dist=" << dist << " d2=" << dist -p.getMinGap() << " la=" << LOOKAHEAD_SAMEDIR * speed 
-                << " opened=" << link->opened(currentTime - DELTA_T, speed, speed, passingLength, p.getImpatience(currentTime), speed, 0, 0, 0, p.ignoreRed(link)) << "\n";
+                << " opened=" << (link == nullptr ? "NULL" : toString(link->opened(currentTime - DELTA_T, speed, speed, passingLength, p.getImpatience(currentTime), speed, 0, 0, 0, p.ignoreRed(link)))) << "\n";
             gDebugFlag1 = false;
         }
         if (link != 0
@@ -929,7 +932,7 @@ MSPModel_Striping::moveInDirectionOnLane(Pedestrians& pedestrians, const MSLane*
                 p.myNLI = getNextLane(p, p.myLane, p.myWalkingAreaPath->from);
             }
         }
-        if (&lane->getEdge() == &p.myStage->getDestination() && p.myStage->getDestinationStop() != 0) {
+        if (&lane->getEdge() == p.myStage->getDestination() && p.myStage->getDestinationStop() != 0) {
             Obstacles arrival(stripes, Obstacle(p.myStage->getArrivalPos() + dir * p.getMinGap(), 0, OBSTACLE_ARRIVALPOS, "arrival", 0));
             p.mergeObstacles(currentObs, arrival);
         }
@@ -1302,7 +1305,7 @@ MSPModel_Striping::PState::moveToNextLane(SUMOTime currentTime) {
         const MSLane* oldLane = myLane;
         myLane = myNLI.lane;
         myDir = myNLI.dir;
-        const bool normalLane = (myLane == 0 || myLane->getEdge().getFunction() == EDGEFUNC_NORMAL);
+        const bool normalLane = (myLane == 0 || myLane->getEdge().getFunction() == EDGEFUNC_NORMAL || &myLane->getEdge() == myStage->getNextRouteEdge());
         if DEBUGCOND(*this) {
             std::cout << SIMTIME
                       << " ped=" << myPerson->getID()
@@ -1370,8 +1373,9 @@ MSPModel_Striping::PState::moveToNextLane(SUMOTime currentTime) {
             // lane was not checked for obstacles)
             const double newLength = (myWalkingAreaPath == 0 ? myLane->getLength() : myWalkingAreaPath->length);
             if (-dist > newLength) {
-                assert(false);
+                assert(OptionsCont::getOptions().getBool("ignore-route-errors"));
                 // should not happen because the end of myLane should have been an obstacle as well
+                // (only when the route is broken)
                 dist = -newLength;
             }
             if (myDir == BACKWARD) {

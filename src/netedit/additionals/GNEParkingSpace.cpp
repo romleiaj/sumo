@@ -55,8 +55,8 @@
 // method definitions
 // ===========================================================================
 
-GNEParkingSpace::GNEParkingSpace(GNEViewNet* viewNet, GNEParkingArea* parkingAreaParent, double x, double y, double z, double width, double length, double angle, bool blockMovement) :
-    GNEAdditional(parkingAreaParent->generateParkingSpaceID(), viewNet, GLO_PARKING_SPACE, SUMO_TAG_PARKING_SPACE, true, blockMovement, parkingAreaParent),
+GNEParkingSpace::GNEParkingSpace(GNEViewNet* viewNet, GNEAdditional* parkingAreaParent, double x, double y, double z, double width, double length, double angle, bool blockMovement) :
+    GNEAdditional(parkingAreaParent, viewNet, GLO_PARKING_SPACE, SUMO_TAG_PARKING_SPACE, "", blockMovement),
     myX(x),
     myY(y),
     myZ(z),
@@ -67,27 +67,6 @@ GNEParkingSpace::GNEParkingSpace(GNEViewNet* viewNet, GNEParkingArea* parkingAre
 
 
 GNEParkingSpace::~GNEParkingSpace() {}
-
-
-void
-GNEParkingSpace::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_X);
-    writeAttribute(device, SUMO_ATTR_Y);
-    writeAttribute(device, SUMO_ATTR_Z);
-    if(myAdditionalParent->getAttribute(SUMO_ATTR_WIDTH) != getAttribute(SUMO_ATTR_WIDTH)) {
-        writeAttribute(device, SUMO_ATTR_WIDTH);
-    }
-    if(myAdditionalParent->getAttribute(SUMO_ATTR_LENGTH) != getAttribute(SUMO_ATTR_LENGTH)) {
-        writeAttribute(device, SUMO_ATTR_LENGTH);
-    }
-    if(myAdditionalParent->getAttribute(SUMO_ATTR_ANGLE) != getAttribute(SUMO_ATTR_ANGLE)) {
-        writeAttribute(device, SUMO_ATTR_ANGLE);
-    }
-    // Close tag
-    device.closeTag();
-}
 
 
 void 
@@ -127,7 +106,7 @@ GNEParkingSpace::getPositionInView() const {
 
 std::string
 GNEParkingSpace::getParentName() const {
-    return myAdditionalParent->getMicrosimID();
+    return myFirstAdditionalParent->getMicrosimID();
 }
 
 
@@ -189,7 +168,7 @@ GNEParkingSpace::getAttribute(SumoXMLAttr key) const {
         case GNE_ATTR_BLOCK_MOVEMENT:
             return toString(myBlockMovement);
         case GNE_ATTR_PARENT:
-            return myAdditionalParent->getID();
+            return myFirstAdditionalParent->getID();
         case GNE_ATTR_SELECTED:
             return toString(isAttributeCarrierSelected());
         default:
@@ -242,12 +221,24 @@ GNEParkingSpace::isValid(SumoXMLAttr key, const std::string& value) {
         case GNE_ATTR_BLOCK_MOVEMENT:
             return canParse<bool>(value);
         case GNE_ATTR_PARENT:
-            return (myViewNet->getNet()->getAdditional(SUMO_TAG_PARKING_AREA, value) != nullptr);
+            return (myViewNet->getNet()->retrieveAdditional(SUMO_TAG_PARKING_AREA, value, false) != nullptr);
         case GNE_ATTR_SELECTED:
             return canParse<bool>(value);
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }
+}
+
+
+std::string 
+GNEParkingSpace::getPopUpID() const {
+    return toString(getTag());
+}
+
+
+std::string 
+GNEParkingSpace::getHierarchyName() const {
+    return toString(getTag()) + ": " + getAttribute(SUMO_ATTR_X) + ", " + getAttribute(SUMO_ATTR_Y);
 }
 
 // ===========================================================================
@@ -282,7 +273,7 @@ GNEParkingSpace::setAttribute(SumoXMLAttr key, const std::string& value) {
             myBlockMovement = parse<bool>(value);
             break;
         case GNE_ATTR_PARENT:
-            changeAdditionalParent(value);
+            changeFirstAdditionalParent(value);
             break;
         case GNE_ATTR_SELECTED:
             if(parse<bool>(value)) {

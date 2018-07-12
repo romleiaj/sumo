@@ -127,6 +127,11 @@ MSBaseVehicle::getParameter() const {
     return *myParameter;
 }
 
+void
+MSBaseVehicle::replaceParameter(const SUMOVehicleParameter* newParameter) {
+    delete myParameter;
+    myParameter = newParameter;
+}
 
 double
 MSBaseVehicle::getMaxSpeed() const {
@@ -151,7 +156,7 @@ MSBaseVehicle::getEdge() const {
 
 
 void
-MSBaseVehicle::reroute(SUMOTime t, SUMOAbstractRouter<MSEdge, SUMOVehicle>& router, const bool onInit, const bool withTaz) {
+MSBaseVehicle::reroute(SUMOTime t, const std::string& info, SUMOAbstractRouter<MSEdge, SUMOVehicle>& router, const bool onInit, const bool withTaz) {
     // check whether to reroute
     const MSEdge* source = withTaz && onInit ? MSEdge::dictionary(myParameter->fromTaz + "-source") : getRerouteOrigin();
     if (source == 0) {
@@ -205,7 +210,7 @@ MSBaseVehicle::reroute(SUMOTime t, SUMOAbstractRouter<MSEdge, SUMOVehicle>& rout
     if (!edges.empty() && edges.back()->isTazConnector()) {
         edges.pop_back();
     }
-    replaceRouteEdges(edges, onInit);
+    replaceRouteEdges(edges, info, onInit);
     const double routeCost = router.recomputeCosts(edges, this, t);
     const_cast<MSRoute*>(myRoute)->setCosts(routeCost);
     // this must be called even if the route could not be replaced
@@ -225,7 +230,7 @@ MSBaseVehicle::reroute(SUMOTime t, SUMOAbstractRouter<MSEdge, SUMOVehicle>& rout
 
 
 bool
-MSBaseVehicle::replaceRouteEdges(ConstMSEdgeVector& edges, bool onInit, bool check, bool removeStops) {
+MSBaseVehicle::replaceRouteEdges(ConstMSEdgeVector& edges, const std::string& info, bool onInit, bool check, bool removeStops) {
     if (edges.empty()) {
         WRITE_WARNING("No route for vehicle '" + getID() + "' found.");
         return false;
@@ -268,7 +273,7 @@ MSBaseVehicle::replaceRouteEdges(ConstMSEdgeVector& edges, bool onInit, bool che
             return false;
         }
     }
-    if (!replaceRoute(newRoute, onInit, (int)edges.size() - oldSize, false, removeStops)) {
+    if (!replaceRoute(newRoute, info, onInit, (int)edges.size() - oldSize, false, removeStops)) {
         newRoute->addReference();
         newRoute->release();
         return false;

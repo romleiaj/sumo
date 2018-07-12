@@ -30,7 +30,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 
 from matplotlib import rcParams
-from pylab import *
+from pylab import arange, figure, legend, savefig, plot, show, xlim, xticks, ylim, yticks
 from optparse import OptionParser
 from xml.sax import make_parser, handler
 
@@ -163,9 +163,8 @@ class NetReader(handler.ContentHandler):
         xmax = -10000000.
         ymin = 10000000.
         ymax = -10000000.
-        min_width = 0
         if options.min_width:
-            min_width = options.min_width
+            options.min_width
         for edge in self._edge2from:
             # compute shape
             xs = []
@@ -177,7 +176,6 @@ class NetReader(handler.ContentHandler):
                 ys.append(float(self._node2y[self._edge2to[edge]]))
             else:
                 shape = self._edge2shape[edge].split(" ")
-                l = []
                 for s in shape:
                     p = s.split(",")
                     xs.append(float(p[0]))
@@ -213,9 +211,9 @@ class NetReader(handler.ContentHandler):
         if not options.show:
             rcParams['backend'] = 'Agg'
         if options.size:
-            f = figure(figsize=(options.size.split(",")))
+            figure(figsize=(options.size.split(",")))
         else:
-            f = figure()
+            figure()
         plot([-1000, -2000], [-1000, -2000],
              color=toColor(.9, colorMap), label="gegeben")
         plot([-1000, -2000], [-1000, -2000],
@@ -391,9 +389,11 @@ class WeightsReader(handler.ContentHandler):
         else:
             for i in weights._intervalBegins:
                 self.valueDependantNorm(self._unaggEdge2value1[
-                                        i], self._minValue1, self._maxValue1, False, percSpeed and self._value1 == "speed")
+                                        i], self._minValue1, self._maxValue1, False, percSpeed and
+                                        self._value1 == "speed")
                 self.valueDependantNorm(self._unaggEdge2value2[
-                                        i], self._minValue2, self._maxValue2, tendency, percSpeed and self._value2 == "speed")
+                                        i], self._minValue2, self._maxValue2, tendency, percSpeed and
+                                        self._value2 == "speed")
 
 
 # initialise
@@ -429,11 +429,11 @@ optParser.add_option("--color-map", dest="colormap",
 # axes/legend
 optParser.add_option("--xticks", dest="xticks", type="string", default="",
                      help="defines ticks on x-axis")
-optParser.add_option("--yticks", dest="yticks", type="string",  default="",
+optParser.add_option("--yticks", dest="yticks", type="string", default="",
                      help="defines ticks on y-axis")
-optParser.add_option("--xlim", dest="xlim", type="string",  default="",
+optParser.add_option("--xlim", dest="xlim", type="string", default="",
                      help="defines x-axis range")
-optParser.add_option("--ylim", dest="ylim", type="string",  default="",
+optParser.add_option("--ylim", dest="ylim", type="string", default="",
                      help="defines y-axis range")
 # output
 optParser.add_option("--size", dest="size", type="string", default="",

@@ -24,12 +24,12 @@
 #include <netedit/dialogs/GNERerouterIntervalDialog.h>
 #include <netedit/netelements/GNEEdge.h>
 #include <netedit/changes/GNEChange_Attribute.h>
-
-#include "GNEDestProbReroute.h"
-#include <netedit/GNEUndoList.h>
-#include "GNERerouter.h"
 #include <netedit/GNEViewNet.h>
 #include <netedit/GNENet.h>
+#include <netedit/GNEUndoList.h>
+
+#include "GNEDestProbReroute.h"
+#include "GNERerouter.h"
 #include "GNERerouterInterval.h"
 
 // ===========================================================================
@@ -37,16 +37,15 @@
 // ===========================================================================
 
 GNEDestProbReroute::GNEDestProbReroute(GNERerouterIntervalDialog* rerouterIntervalDialog) :
-    GNEAttributeCarrier(SUMO_TAG_DEST_PROB_REROUTE),
-    myRerouterIntervalParent(rerouterIntervalDialog->getEditedRerouterInterval()),
-    myNewEdgeDestination(rerouterIntervalDialog->getEditedRerouterInterval()->getRerouterParent()->getEdgeChilds().at(0)),
-    myProbability(parse<double>(getTagProperties(SUMO_TAG_ROUTE_PROB_REROUTE).getDefaultValue(SUMO_ATTR_PROB))) {
+    GNEAdditional(rerouterIntervalDialog->getEditedAdditional(), rerouterIntervalDialog->getEditedAdditional()->getViewNet(), GLO_REROUTER, SUMO_TAG_DEST_PROB_REROUTE, "", false),
+    myNewEdgeDestination(rerouterIntervalDialog->getEditedAdditional()->getFirstAdditionalParent()->getEdgeChilds().at(0)) {
+    // fill dest prob reroute interval with default values
+    setDefaultValues();
 }
 
 
-GNEDestProbReroute::GNEDestProbReroute(GNERerouterInterval* rerouterIntervalParent, GNEEdge* newEdgeDestination, double probability):
-    GNEAttributeCarrier(SUMO_TAG_DEST_PROB_REROUTE),
-    myRerouterIntervalParent(rerouterIntervalParent),
+GNEDestProbReroute::GNEDestProbReroute(GNEAdditional* rerouterIntervalParent, GNEEdge* newEdgeDestination, double probability):
+    GNEAdditional(rerouterIntervalParent, rerouterIntervalParent->getViewNet(), GLO_REROUTER, SUMO_TAG_DEST_PROB_REROUTE, "", false),
     myNewEdgeDestination(newEdgeDestination),
     myProbability(probability) {
 }
@@ -55,41 +54,38 @@ GNEDestProbReroute::GNEDestProbReroute(GNERerouterInterval* rerouterIntervalPare
 GNEDestProbReroute::~GNEDestProbReroute() {}
 
 
-void
-GNEDestProbReroute::writeDestProbReroute(OutputDevice& device) const {
-    // open tag
-    device.openTag(getTag());
-    // write edge ID
-    writeAttribute(device, SUMO_ATTR_ID);
-    // write probability
-    writeAttribute(device, SUMO_ATTR_PROB);
-    // close tag
-    device.closeTag();
-}
-
-
-GNERerouterInterval*
-GNEDestProbReroute::getRerouterIntervalParent() const {
-    return myRerouterIntervalParent;
+void 
+GNEDestProbReroute::moveGeometry(const Position&, const Position&) {
+    // This additional cannot be moved
 }
 
 
 void 
-GNEDestProbReroute::selectAttributeCarrier(bool) {
-    // this AC cannot be selected
+GNEDestProbReroute::commitGeometryMoving(const Position&, GNEUndoList*) {
+    // This additional cannot be moved
+}
+
+void 
+GNEDestProbReroute::updateGeometry() {
+    // Currently this additional doesn't own a Geometry
+}
+
+
+Position 
+GNEDestProbReroute::getPositionInView() const {
+    return myFirstAdditionalParent->getPositionInView();
+}
+
+
+std::string 
+GNEDestProbReroute::getParentName() const {
+    return myFirstAdditionalParent->getID();
 }
 
 
 void 
-GNEDestProbReroute::unselectAttributeCarrier(bool) {
-    // this AC cannot be unselected
-}
-
-
-bool 
-GNEDestProbReroute::isAttributeCarrierSelected() const {
-    // this AC doesn't own a select flag
-    return false;
+GNEDestProbReroute::drawGL(const GUIVisualizationSettings&) const {
+    // Currently This additional isn't drawn
 }
 
 
@@ -97,9 +93,13 @@ std::string
 GNEDestProbReroute::getAttribute(SumoXMLAttr key) const {
     switch (key) {
         case SUMO_ATTR_ID:
+            return getAdditionalID();
+        case SUMO_ATTR_EDGE:
             return myNewEdgeDestination->getID();
         case SUMO_ATTR_PROB:
             return toString(myProbability);
+        case GNE_ATTR_PARENT:
+            return myFirstAdditionalParent->getID();
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }
@@ -113,6 +113,7 @@ GNEDestProbReroute::setAttribute(SumoXMLAttr key, const std::string& value, GNEU
     }
     switch (key) {
         case SUMO_ATTR_ID:
+        case SUMO_ATTR_EDGE:
         case SUMO_ATTR_PROB:
             undoList->p_add(new GNEChange_Attribute(this, key, value));
             break;
@@ -126,12 +127,26 @@ bool
 GNEDestProbReroute::isValid(SumoXMLAttr key, const std::string& value) {
     switch (key) {
         case SUMO_ATTR_ID:
-            return (myRerouterIntervalParent->getRerouterParent()->getViewNet()->getNet()->retrieveEdge(value, false) != nullptr);
+            return isValidAdditionalID(value);
+        case SUMO_ATTR_EDGE:
+            return (myViewNet->getNet()->retrieveEdge(value, false) != nullptr);
         case SUMO_ATTR_PROB:
             return canParse<double>(value) && parse<double>(value) >= 0 && parse<double>(value) <= 1;
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }
+}
+
+
+std::string 
+GNEDestProbReroute::getPopUpID() const {
+    return toString(getTag());
+}
+
+
+std::string 
+GNEDestProbReroute::getHierarchyName() const {
+    return toString(getTag()) + ": " + myNewEdgeDestination->getID();
 }
 
 // ===========================================================================
@@ -141,14 +156,15 @@ GNEDestProbReroute::isValid(SumoXMLAttr key, const std::string& value) {
 void
 GNEDestProbReroute::setAttribute(SumoXMLAttr key, const std::string& value) {
     switch (key) {
-        case SUMO_ATTR_ID: {
-            myNewEdgeDestination = myRerouterIntervalParent->getRerouterParent()->getViewNet()->getNet()->retrieveEdge(value);
+        case SUMO_ATTR_ID:
+            changeAdditionalID(value);
             break;
-        }
-        case SUMO_ATTR_PROB: {
+        case SUMO_ATTR_EDGE:
+            myNewEdgeDestination = myViewNet->getNet()->retrieveEdge(value);
+            break;
+        case SUMO_ATTR_PROB:
             myProbability = parse<double>(value);
             break;
-        }
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }

@@ -50,8 +50,19 @@
 // ===========================================================================
 
 GNEDetector::GNEDetector(const std::string& id, GNEViewNet* viewNet, GUIGlObjectType type, SumoXMLTag tag, GNELane* lane,
-                         double pos, double freq, const std::string& filename, bool friendlyPos, GNEAdditional* additionalParent, bool blockMovement) :
-    GNEAdditional(id, viewNet, type, tag, true, blockMovement, additionalParent),
+                         double pos, double freq, const std::string& filename, const std::string& name, bool friendlyPos, bool blockMovement) :
+    GNEAdditional(id, viewNet, type, tag, name, blockMovement),
+    myLane(lane),
+    myPositionOverLane(pos),
+    myFreq(freq),
+    myFilename(filename),
+    myFriendlyPosition(friendlyPos) {
+}
+
+
+GNEDetector::GNEDetector(GNEAdditional* additionalParent, GNEViewNet* viewNet, GUIGlObjectType type, SumoXMLTag tag, GNELane* lane,
+                         double pos, double freq, const std::string& filename, const std::string& name, bool friendlyPos, bool blockMovement) :
+    GNEAdditional(additionalParent, viewNet, type, tag, name, blockMovement),
     myLane(lane),
     myPositionOverLane(pos),
     myFreq(freq),
@@ -100,7 +111,13 @@ GNEDetector::commitGeometryMoving(const Position& oldPos, GNEUndoList* undoList)
 
 Position
 GNEDetector::getPositionInView() const {
-    return myLane->getShape().positionAtOffset(myPositionOverLane);
+    if(myPositionOverLane < 0) {
+        return myLane->getShape().front();
+    } else if (myPositionOverLane > myLane->getShape().length()) {
+        return myLane->getShape().back();
+    } else {
+        return myLane->getShape().positionAtOffset(myPositionOverLane);
+    }
 }
 
 
@@ -109,5 +126,16 @@ GNEDetector::getParentName() const {
     return myLane->getMicrosimID();
 }
 
+
+std::string 
+GNEDetector::getPopUpID() const {
+    return toString(getTag()) + ": " + getID();
+}
+
+
+std::string 
+GNEDetector::getHierarchyName() const {
+    return toString(getTag());
+}
 
 /****************************************************************************/

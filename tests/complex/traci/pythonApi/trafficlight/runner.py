@@ -20,12 +20,9 @@ from __future__ import absolute_import
 import os
 import subprocess
 import sys
-import shutil
-import struct
-import random
 sys.path.append(os.path.join(
     os.path.dirname(sys.argv[0]), "..", "..", "..", "..", "..", "tools"))
-import traci
+import traci  # noqa
 import sumolib  # noqa
 
 sumoBinary = sumolib.checkBinary('sumo')
@@ -53,6 +50,7 @@ def check():
     print("phase", traci.trafficlight.getPhase(tlsID))
     print("switch", traci.trafficlight.getNextSwitch(tlsID))
 
+
 phases = []
 phases.append(traci.trafficlight.Phase(30, 0, 0, "rrrrGGggrrrrGGgg"))
 phases.append(traci.trafficlight.Phase(10, 0, 0, "rrrrGGggrrrrGGgg"))
@@ -67,7 +65,7 @@ traci.trafficlight.setPhase(tlsID, 4)
 traci.trafficlight.setPhaseDuration(tlsID, 23)
 check()
 defs = traci.trafficlight.getCompleteRedYellowGreenDefinition(tlsID)
-print("numDefs=%s numPhases=%s" % (len(defs), map(lambda d : len(d.getPhases()), defs)))
+print("numDefs=%s numPhases=%s" % (len(defs), map(lambda d: len(d.getPhases()), defs)))
 traci.trafficlight.subscribe(tlsID)
 print(traci.trafficlight.getSubscriptionResults(tlsID))
 for step in range(3, 6):

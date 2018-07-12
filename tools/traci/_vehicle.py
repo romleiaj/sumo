@@ -20,7 +20,6 @@
 
 from __future__ import absolute_import
 import struct
-import sys
 import warnings
 from .domain import Domain
 from .storage import Storage
@@ -557,14 +556,14 @@ class VehicleDomain(Domain):
         Returns the action step length for this vehicle.
         """
         return self._getUniversal(tc.VAR_ACTIONSTEPLENGTH, vehID)
-    
+
     def getLastActionTime(self, vehID):
         """getLastActionTime(string) -> double
 
         Returns the time of last action poitn for this vehicle.
         """
         return self._getUniversal(tc.VAR_ACTIONSTEPLENGTH, vehID)
-    
+
     def getImperfection(self, vehID):
         """getImperfection(string) -> double
 
@@ -703,25 +702,26 @@ class VehicleDomain(Domain):
         Return the lane change state for the vehicle as a list of string constants
         """
         constants = {
-                0 : 'stay',
-                1 : 'left',
-                2 : 'right',
-                3 : 'strategic',
-                4 : 'cooperative',
-                5 : 'speedGain',
-                6 : 'keepRight',
-                7 : 'TraCI',
-                8 : 'urgent',
-                9 : 'blocked by left leader',
-                10: 'blocked by left follower',
-                11: 'blocked by right leader',
-                12: 'bloecked by right follower',
-                13: 'overlapping',
-                14: 'insufficient space',
-                15: 'sublane',
-                }
+            0: 'stay',
+            1: 'left',
+            2: 'right',
+            3: 'strategic',
+            4: 'cooperative',
+            5: 'speedGain',
+            6: 'keepRight',
+            7: 'TraCI',
+            8: 'urgent',
+            9: 'blocked by left leader',
+            10: 'blocked by left follower',
+            11: 'blocked by right leader',
+            12: 'bloecked by right follower',
+            13: 'overlapping',
+            14: 'insufficient space',
+            15: 'sublane',
+        }
+
         def prettifyBitstring(intval):
-            return [v for k,v in constants.items() if (intval & 2**k)]
+            return [v for k, v in constants.items() if (intval & 2**k)]
 
         state, stateTraCI = self.getLaneChangeState(vehID, direction)
         return prettifyBitstring(state), prettifyBitstring(stateTraCI)
@@ -769,7 +769,8 @@ class VehicleDomain(Domain):
         in milliseconds.
         """
         self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_STOP,
-                                       vehID, 1 + 4 + 1 + 4 + len(edgeID) + 1 + 8 + 1 + 1 + 1 + 4 + 1 + 1 + 1 + 8 + 1 + 4)
+                                       vehID, (1 + 4 + 1 + 4 + len(edgeID) + 1 + 8 + 1 + 1 +
+                                               1 + 4 + 1 + 1 + 1 + 8 + 1 + 4))
         self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 7)
         self._connection._packString(edgeID)
         self._connection._string += struct.pack("!BdBBBiBB", tc.TYPE_DOUBLE, pos,
@@ -831,11 +832,11 @@ class VehicleDomain(Domain):
         the lane will be chosen for the given amount of time (in ms).
         """
         self._connection._beginMessage(
-            tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID, 1 + 4 + 1 + 1 + 1 + 4 + 1 +1)
+            tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID, 1 + 4 + 1 + 1 + 1 + 4 + 1 + 1)
         self._connection._string += struct.pack(
             "!BiBBBiBB", tc.TYPE_COMPOUND, 3, tc.TYPE_BYTE, laneIndex, tc.TYPE_INTEGER, duration, tc.TYPE_BYTE, 0)
         self._connection._sendExact()
-        
+
     def changeLaneRelative(self, vehID, laneIndex, duration):
         """changeLane(string, int, int) -> None
 
@@ -843,16 +844,15 @@ class VehicleDomain(Domain):
         the lane will be chosen for the given amount of time (in ms).
         """
         self._connection._beginMessage(
-            tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID, 1 + 4 + 1 + 1 + 1 + 4 + 1 +1)
+            tc.CMD_SET_VEHICLE_VARIABLE, tc.CMD_CHANGELANE, vehID, 1 + 4 + 1 + 1 + 1 + 4 + 1 + 1)
         self._connection._string += struct.pack(
             "!BiBBBiBB", tc.TYPE_COMPOUND, 3, tc.TYPE_BYTE, laneIndex, tc.TYPE_INTEGER, duration, tc.TYPE_BYTE, 1)
         self._connection._sendExact()
-        
 
     def changeSublane(self, vehID, latDist):
         """changeLane(string, double) -> None
-        Forces a lateral change by the given amount (negative values indicate changing to the right, positive to the left)
-        This will override any other lane change motivations but conform to
+        Forces a lateral change by the given amount (negative values indicate changing to the right, positive
+        to the left). This will override any other lane change motivations but conform to
         safety-constraints as configured by laneChangeMode.
         """
         self._connection._sendDoubleCmd(
@@ -917,15 +917,17 @@ class VehicleDomain(Domain):
         """setAdaptedTraveltime(string, string, double, int, int) -> None
         Inserts the information about the travel time of edge "edgeID" valid
         from begin time to end time into the vehicle's internal edge weights
-        container. 
+        container.
         If the time is not specified, any previously set values for that edge
         are removed.
         If begTime or endTime are not specified the value is set for the whole
         simulation duration.
         """
-        if type(edgeID) != str and type(begTime) == str: 
+        if type(edgeID) != str and type(begTime) == str:
             # legacy handling
-            warnings.warn("Parameter order has changed for setAdaptedTraveltime(). Attempting legacy ordering. Please update your code.", stacklevel=2)
+            warnings.warn(
+                "Parameter order has changed for setAdaptedTraveltime(). Attempting legacy ordering. " +
+                "Please update your code.", stacklevel=2)
             return self.setAdaptedTraveltime(vehID, begTime, endTime, edgeID, time)
         if time is None:
             # reset
@@ -961,9 +963,11 @@ class VehicleDomain(Domain):
         If begTime or endTime are not specified the value is set for the whole
         simulation duration.
         """
-        if type(edgeID) != str and type(begTime) == str: 
+        if type(edgeID) != str and type(begTime) == str:
             # legacy handling
-            warnings.warn("Parameter order has changed for setEffort(). Attempting legacy ordering. Please update your code.", stacklevel=2)
+            warnings.warn(
+                "Parameter order has changed for setEffort(). Attempting legacy ordering. Please update your code.",
+                stacklevel=2)
             return self.setEffort(vehID, begTime, endTime, edgeID, effort)
         if effort is None:
             # reset
@@ -1040,6 +1044,7 @@ class VehicleDomain(Domain):
         """setSpeed(string, double) -> None
 
         Sets the speed in m/s for the named vehicle within the last step.
+        Calling with speed=-1 hands the vehicle control back to SUMO.
         """
         self._connection._sendDoubleCmd(
             tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_SPEED, vehID, speed)
@@ -1192,11 +1197,11 @@ class VehicleDomain(Domain):
         self._connection._sendDoubleCmd(
             tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_APPARENT_DECEL, vehID, decel)
 
-    def setActionStepLength(self, vehID, actionStepLength, resetActionOffset = True):
+    def setActionStepLength(self, vehID, actionStepLength, resetActionOffset=True):
         """setActionStepLength(string, double, bool) -> None
 
-        Sets the action step length for this vehicle. If resetActionOffset == True (default), the 
-        next action point is scheduled immediately. if If resetActionOffset == False, the interval 
+        Sets the action step length for this vehicle. If resetActionOffset == True (default), the
+        next action point is scheduled immediately. if If resetActionOffset == False, the interval
         between the last and the next action point is updated to match the given value, or if the latter
         is smaller than the time since the last action point, the next action follows immediately.
         """
@@ -1204,10 +1209,10 @@ class VehicleDomain(Domain):
             raise exceptions.TraCIException("Invalid value for actionStepLength. Given value must be non-negative.")
         # Use negative value to indicate resetActionOffset == False
         if not resetActionOffset:
-            actionStepLength*=-1
+            actionStepLength *= -1
         self._connection._sendDoubleCmd(
             tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_ACTIONSTEPLENGTH, vehID, actionStepLength)
-        
+
     def setImperfection(self, vehID, imperfection):
         """setImperfection(string, double) -> None
 
@@ -1219,7 +1224,8 @@ class VehicleDomain(Domain):
     def setTau(self, vehID, tau):
         """setTau(string, double) -> None
 
-        Sets the driver's tau-parameter (reaction time or anticipation time depending on the car-following model) in s for this vehicle.
+        Sets the driver's tau-parameter (reaction time or anticipation time depending on the car-following model) in s
+        for this vehicle.
         """
         self._connection._sendDoubleCmd(
             tc.CMD_SET_VEHICLE_VARIABLE, tc.VAR_TAU, vehID, tau)
@@ -1246,7 +1252,8 @@ class VehicleDomain(Domain):
         Add a new vehicle (old style)
         """
         self._connection._beginMessage(tc.CMD_SET_VEHICLE_VARIABLE, tc.ADD, vehID,
-                                       1 + 4 + 1 + 4 + len(typeID) + 1 + 4 + len(routeID) + 1 + 4 + 1 + 8 + 1 + 8 + 1 + 1)
+                                       (1 + 4 + 1 + 4 + len(typeID) + 1 + 4 + len(routeID) +
+                                        1 + 4 + 1 + 8 + 1 + 8 + 1 + 1))
         if depart > 0:
             depart *= 1000
         self._connection._string += struct.pack("!Bi", tc.TYPE_COMPOUND, 6)
@@ -1326,5 +1333,74 @@ class VehicleDomain(Domain):
         """
         Domain.subscribeContext(
             self, objectID, domain, dist, varIDs, begin, end)
+
+    def addSubscriptionFilterLanes(self, lanes):
+        """addSubscriptionFilterLanes(list(integer)) -> None
+
+        Adds a lane-filter to the last modified vehicle context subscription (call it just after subscribing).
+        lanes is a list of relative lane indices (-1 -> right neighboring lane of the ego, 0 -> ego lane, etc.)
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_LANES, lanes)
+
+    def addSubscriptionFilterNoOpposite(self):
+        """addSubscriptionFilterNoOpposite() -> None
+
+        Omits vehicles on other edges than the ego's for the last modified vehicle context subscription
+        (call it just after subscribing).
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_NOOPPOSITE)
+
+    def addSubscriptionFilterDownstreamDistance(self, dist):
+        """addSubscriptionFilterDownstreamDist(float) -> None
+
+        Sets the downstream distance along the network for vehicles to be returned by the last modified
+        vehicle context subscription (call it just after subscribing).
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_DOWNSTREAM_DIST, dist)
+
+    def addSubscriptionFilterUpstreamDistance(self, dist):
+        """addSubscriptionFilterUpstreamDist(float) -> None
+
+        Sets the upstream distance along the network for vehicles to be returned by the last modified
+        vehicle context subscription (call it just after subscribing).
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_UPSTREAM_DIST, dist)
+
+    def addSubscriptionFilterCFManeuver(self):
+        """addSubscriptionFilterCFManeuver() -> None
+
+        Restricts vehicles returned by the last modified vehicle context subscription to leader and follower of the ego
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_CF_MANEUVER)
+
+    def addSubscriptionFilterLCManeuver(self, direction):
+        """addSubscriptionFilterLCManeuver(int) -> None
+
+        Restricts vehicles returned by the last modified vehicle context subscription to neighbor and ego-lane leader
+        and follower of the ego
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_LC_MANEUVER, direction)
+
+    def addSubscriptionFilterTurnManeuver(self):
+        """addSubscriptionFilterTurnManeuver() -> None
+
+        Restricts vehicles returned by the last modified vehicle context subscription to foes on an upcoming junction
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_TURN_MANEUVER)
+
+    def addSubscriptionFilterVClass(self, vClasses):
+        """addSubscriptionFilterVClass(list(String)) -> None
+
+        Restricts vehicles returned by the last modified vehicle context subscription to vehicles of the given classes
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_VCLASS, vClasses)
+
+    def addSubscriptionFilterVType(self, vTypes):
+        """addSubscriptionFilterVType(list(String)) -> None
+
+        Restricts vehicles returned by the last modified vehicle context subscription to vehicles of the given types
+        """
+        self._connection._addSubscriptionFilter(tc.FILTER_TYPE_VTYPE, vTypes)
+
 
 VehicleDomain()

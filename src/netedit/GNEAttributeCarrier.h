@@ -65,6 +65,7 @@ class GNEAttributeCarrier : public GNEReferenceCounter {
 
 public:
 
+    /// @brief struct with the tag Properties
     enum AttrProperty {
         ATTRPROPERTY_INT =          1 << 0,     // Attribute is an integer (Including Zero)
         ATTRPROPERTY_FLOAT =        1 << 1,     // Attribute is a float
@@ -74,17 +75,19 @@ public:
         ATTRPROPERTY_COLOR =        1 << 5,     // Attribute is a color defined by a specifically word (Red, green) or by a special format (XXX,YYY,ZZZ)
         ATTRPROPERTY_VCLASS =       1 << 6,     // Attribute is a VClass (passenger, bus, motorcicle...)
         ATTRPROPERTY_POSITIVE =     1 << 7,     // Attribute is positive (Including Zero)
-        ATTRPROPERTY_UNIQUE =       1 << 8,     // Attribute is unique (cannot be edited in a selection of similar elements (ID, Position...)
-        ATTRPROPERTY_FILENAME =     1 << 9,     // Attribute is a filename (string that cannot contains certain characters)
-        ATTRPROPERTY_NONEDITABLE =  1 << 10,    // Attribute is non editable (index of a lane)
-        ATTRPROPERTY_DISCRETE =     1 << 11,    // Attribute is discrete (only certain values are allowed)
-        ATTRPROPERTY_PROBABILITY =  1 << 12,    // Attribute is probability (only allowed values between 0 and 1, including both)
-        ATTRPROPERTY_TIME =         1 << 13,    // Attribute is a Time (float positive)
-        ATTRPROPERTY_ANGLE =        1 << 14,    // Attribute is an angle (only takes values between 0 and 360, including both, another value will be automatically reduced
-        ATTRPROPERTY_LIST =         1 << 15,    // Attribute is a list of other elements separated by spaces
-        ATTRPROPERTY_OPTIONAL =     1 << 16,    // Attribute is optional
-        ATTRPROPERTY_DEFAULTVALUE = 1 << 17,    // Attribute owns a default value
-        ATTRPROPERTY_COMBINABLE =   1 << 18,    // Attribute is combinable with other Attribute
+        ATTRPROPERTY_NOTZERO =      1 << 8,     // Attribute cannot be 0 (only for numerical attributes)
+        ATTRPROPERTY_UNIQUE =       1 << 9,     // Attribute is unique (cannot be edited in a selection of similar elements (ID, Position...)
+        ATTRPROPERTY_FILENAME =     1 << 10,    // Attribute is a filename (string that cannot contains certain characters)
+        ATTRPROPERTY_NONEDITABLE =  1 << 11,    // Attribute is non editable (index of a lane)
+        ATTRPROPERTY_DISCRETE =     1 << 12,    // Attribute is discrete (only certain values are allowed)
+        ATTRPROPERTY_PROBABILITY =  1 << 13,    // Attribute is probability (only allowed values between 0 and 1, including both)
+        ATTRPROPERTY_TIME =         1 << 14,    // Attribute is a Time (float positive)
+        ATTRPROPERTY_ANGLE =        1 << 15,    // Attribute is an angle (only takes values between 0 and 360, including both, another value will be automatically reduced
+        ATTRPROPERTY_LIST =         1 << 16,    // Attribute is a list of other elements separated by spaces
+        ATTRPROPERTY_OPTIONAL =     1 << 17,    // Attribute is optional
+        ATTRPROPERTY_DEFAULTVALUE = 1 << 18,    // Attribute owns a default value
+        ATTRPROPERTY_COMBINABLE =   1 << 19,    // Attribute is combinable with other Attribute
+        ATTRPROPERTY_SYNONYM =      1 << 20,    // Element will be written with a different name in der XML
     };
 
     /// @brief struct with the attribute Properties
@@ -94,7 +97,7 @@ public:
         AttributeValues();
 
         /// @brief parameter constructor
-        AttributeValues(int attributeProperty, int positionListed, const std::string &definition, const std::string &defaultValue, const std::vector<std::string> &discreteValues);
+        AttributeValues(int attributeProperty, int positionListed, const std::string &definition, const std::string &defaultValue, const std::vector<std::string> &discreteValues, SumoXMLAttr synonym);
 
         /// @brief get position in list (used in frames for listing attributes with certain sort)
         int getPositionListed() const;
@@ -111,8 +114,14 @@ public:
         /// @brief get discrete values
         const std::vector<std::string> &getDiscreteValues() const;
 
+        /// @brief get tag synonym
+        SumoXMLAttr getAttrSynonym() const;
+
         /// @brief return true if attribute owns a default value
         bool hasDefaultValue() const;
+
+        /// @brief return true if Attr correspond to an element that will be written in XML with another name
+        bool hasAttrSynonym() const;
 
         /// @brief return true if atribute is an integer
         bool isInt() const;
@@ -138,6 +147,9 @@ public:
         /// @brief return true if atribute is positive
         bool isPositive() const;
 
+        /// @brief return true if atribute cannot be zero
+        bool isntZero() const;
+
         /// @brief return true if atribute is a color
         bool isColor() const;
 
@@ -146,6 +158,9 @@ public:
 
         /// @brief return true if atribute is a VehicleClass
         bool isVClass() const;
+
+        /// @brief return true if atribute is a VehicleClass
+        bool isSVCPermission() const;
 
         /// @brief return true if atribute is a list
         bool isList() const;
@@ -162,6 +177,9 @@ public:
         /// @brief return true if atribute is combinable with other Attribute
         bool isCombinable() const;
 
+        /// @brief return true if atribute isn't editable
+        bool isNonEditable() const;
+
     private:
         /// @brief Property of attribute
         int myAttributeProperty;
@@ -177,25 +195,32 @@ public:
 
         /// @brief discrete values that can take this Attribute (by default empty)
         std::vector<std::string> myDiscreteValues;
+
+        /// @brief Attribute written in XML (If is SUMO_ATTR_NOTHING), original Attribute will be written)
+        SumoXMLAttr myAttrSynonym;
     };
 
     enum TAGProperty {
-        TAGPROPERTY_NETELEMENT =    1 << 0,     // Edges, Junctions, Lanes...
-        TAGPROPERTY_ADDITIONAL =    1 << 1,     // Bus Stops, Charging Stations, Detectors...
-        TAGPROPERTY_SHAPE =         1 << 2,     // POIs, Polygons
-        TAGPROPERTY_STOPPINGPLACE = 1 << 3,     // StoppingPlaces (BusStops, ChargingStations...)
-        TAGPROPERTY_DETECTOR =      1 << 4,     // Detectors (E1, E2...)
-        TAGPROPERTY_ROUTEELEMENT =  1 << 5,     // VTypes, Vehicles, Flows...
-        TAGPROPERTY_INTERNAL =      1 << 6,     // If set, element cannot be created using Frames (GNEAdditionalFrame, GNEPolygonFrame...)
-        TAGPROPERTY_BLOCKMOVEMENT = 1 << 7,     // Element can block their movement
-        TAGPROPERTY_BLOCKSHAPE =    1 << 8,     // Element can block their shape
-        TAGPROPERTY_CLOSESHAPE =    1 << 9,     // Element can close their shape
-        TAGPROPERTY_GEOPOSITION =   1 << 10,    // Element's position can be defined using a GEO position
-        TAGPROPERTY_GEOSHAPE =      1 << 11,    // Element's shape acn be defined using a GEO Shape
-        TAGPROPERTY_DIALOG =        1 << 12,    // Element can be edited using a dialog (GNECalibratorDialog, GNERerouterDialog...)
-        TAGPROPERTY_PARENT =        1 << 13,    // Element will be writed in XML as child of another element (E3Entry -> E3Detector...)
-        TAGPROPERTY_LIMITEDCHILDS = 1 << 14,    // Element can only have a certain number of childs (0 -> unlimited)
-        TAGPROPERTY_REPARENT =      1 << 15,    // Element can be reparent
+        TAGPROPERTY_NETELEMENT =          1 << 0,   // Edges, Junctions, Lanes...
+        TAGPROPERTY_ADDITIONAL =          1 << 1,   // Bus Stops, Charging Stations, Detectors...
+        TAGPROPERTY_SHAPE =               1 << 2,   // POIs, Polygons
+        TAGPROPERTY_STOPPINGPLACE =       1 << 3,   // StoppingPlaces (BusStops, ChargingStations...)
+        TAGPROPERTY_DETECTOR =            1 << 4,   // Detectors (E1, E2...)
+        TAGPROPERTY_ROUTEELEMENT =        1 << 5,   // VTypes, Vehicles, Flows...
+        TAGPROPERTY_DRAWABLE =            1 << 6,   // Element can be drawed in view
+        TAGPROPERTY_BLOCKMOVEMENT =       1 << 7,   // Element can block their movement
+        TAGPROPERTY_BLOCKSHAPE =          1 << 8,   // Element can block their shape
+        TAGPROPERTY_CLOSESHAPE =          1 << 9,   // Element can close their shape
+        TAGPROPERTY_GEOPOSITION =         1 << 10,  // Element's position can be defined using a GEO position
+        TAGPROPERTY_GEOSHAPE =            1 << 11,  // Element's shape acn be defined using a GEO Shape
+        TAGPROPERTY_DIALOG =              1 << 12,  // Element can be edited using a dialog (GNECalibratorDialog, GNERerouterDialog...)
+        TAGPROPERTY_PARENT =              1 << 13,  // Element will be writed in XML as child of another element (E3Entry -> E3Detector...)
+        TAGPROPERTY_MINIMUMCHILDS =       1 << 14,  // Element will be only writed in XML if has a minimum number of childs
+        TAGPROPERTY_REPARENT =            1 << 15,  // Element can be reparent
+        TAGPROPERTY_SYNONYM =             1 << 16,  // Element will be written with a different name in der XML
+        TAGPROPERTY_AUTOMATICSORTING =    1 << 17,  // Element sort automatic their Childs (used by Additionals)
+        TAGPROPERTY_SELECTABLE =          1 << 18,  // Element is selectable
+        TAGPROPERTY_WRITECHILDSSEPARATE = 1 << 19,  // Element writes their childs in a separated filename
     };
 
     /// @brief struct with the attribute Properties
@@ -205,10 +230,16 @@ public:
         TagValues();
 
         /// @brief parameter constructor
-        TagValues(int tagProperty, int positionListed, GUIIcon icon, SumoXMLTag tagParent = SUMO_TAG_NOTHING, int maxNumberOfChilds = 0);
+        TagValues(int tagProperty, int positionListed, GUIIcon icon, SumoXMLTag tagParent = SUMO_TAG_NOTHING, SumoXMLTag tagSynonym = SUMO_TAG_NOTHING);
 
         /// @brief add attribute (duplicated attributed aren't allowed)
-        void addAttribute(SumoXMLAttr attr, int attributeProperty, const std::string &definition, const std::string &defaultValue, std::vector<std::string> discreteValues = std::vector<std::string>());
+        void addAttribute(SumoXMLAttr attr, int attributeProperty, const std::string &definition, const std::string &defaultValue, std::vector<std::string> discreteValues = std::vector<std::string>(), SumoXMLAttr synonym = SUMO_ATTR_NOTHING);
+
+        /// @brief add attribute with synonym (duplicated attributed aren't allowed)
+        void addAttribute(SumoXMLAttr attr, int attributeProperty, const std::string &definition, const std::string &defaultValue, SumoXMLAttr synonym);
+
+        /// @brief add deprecated Attribute
+        void addDeprecatedAttribute(SumoXMLAttr attr);
 
         /// @brief get attribute (throw error if doesn't exist)
         const AttributeValues &getAttribute(SumoXMLAttr attr) const;
@@ -234,8 +265,8 @@ public:
         /// @brief if Tag owns a parent, return parent tag
         SumoXMLTag getParentTag() const;
 
-        /// @brief get maximum number of childs
-        int getMaxNumberOfChilds() const;
+        /// @brief get tag synonym
+        SumoXMLTag getTagSynonym() const;
 
         /// @brief check if current TagValues owns the attribute attr
         bool hasAttribute(SumoXMLAttr attr) const;
@@ -255,8 +286,11 @@ public:
         /// @brief return true if tag correspond to a shape (Only used to group all detectors in the XML)
         bool isDetector() const;
 
-        /// @brief return true if tag correspond to an internal element (i.e. Cannot be created using frames)
-        bool isInternal() const;
+        /// @brief return true if tag correspond to a drawable element
+        bool isDrawable() const;
+
+        /// @brief return true if tag correspond to a selectable element
+        bool isSelectable() const;
 
         /// @brief return true if tag correspond to an element that can block their movement
         bool canBlockMovement() const;
@@ -276,14 +310,26 @@ public:
         /// @brief return true if tag correspond to an element that can had another element as parent
         bool hasParent() const;
 
+        /// @brief return true if tag correspond to an element that will be written in XML with another tag
+        bool hasTagSynonym() const;
+
         /// @brief return true if tag correspond to an element that can be edited using a dialog
         bool hasDialog() const;
 
         /// @brief return true if tag correspond to an element that only have a limited number of childs
-        bool hasLimitedNumberOfChilds() const;
+        bool hasMinimumNumberOfChilds() const;
 
         /// @brief return true if tag correspond to an element that can be reparent
         bool canBeReparent() const;
+
+        /// @brief return true if tag correspond to an element that can sort their childs automatic
+        bool canAutomaticSortChilds() const;
+
+        /// @brief return true if tag correspond to an element that can sort their childs automatic
+        bool canWriteChildsSeparate() const;
+
+        /// @brief return true if attribute of this tag is deprecated
+        bool isAttributeDeprecated(SumoXMLAttr attr) const;
 
     private:
         /// @brief Property of attribute
@@ -301,8 +347,11 @@ public:
         /// @brief parent tag
         SumoXMLTag myParentTag;
 
-        /// @brief maximun number of childs (0 -> unlimited)
-        int myMaxNumberOfChilds;
+        /// @brief Tag written in XML (If is SUMO_TAG_NOTHING), original Tag name will be written)
+        SumoXMLTag myTagSynonym;
+
+        /// @brief List with the deprecated Attributes
+        std::vector<SumoXMLAttr> myDeprecatedAttributes;
     };
 
     /**@brief Constructor
@@ -345,6 +394,12 @@ public:
     * @param[in] undoList The undoList on which to register changes
     */
     virtual bool isValid(SumoXMLAttr key, const std::string& value) = 0;
+
+    /// @brief get PopPup ID (Used in AC Hierarchy)
+    virtual std::string getPopUpID() const = 0;
+
+    /// @brief get Hierarchy Name (Used in AC Hierarchy)
+    virtual std::string getHierarchyName() const = 0;
     /// @}
 
     /// @name Certain attributes and ACs (for example, connections) can be either loaded or guessed. The following static variables are used to remark it.
@@ -378,16 +433,16 @@ public:
     static const TagValues &getTagProperties(SumoXMLTag tag);
 
     /// @brief get all editable for tag elements of all types
-    static std::vector<SumoXMLTag> allowedTags(bool includingInternals);
+    static std::vector<SumoXMLTag> allowedTags(bool onlyDrawables);
 
     /// @brief get all editable for tag net elements
-    static std::vector<SumoXMLTag> allowedNetElementsTags(bool includingInternals);
+    static std::vector<SumoXMLTag> allowedNetElementsTags(bool onlyDrawables);
 
     /// @brief get all editable for tag additional elements
-    static std::vector<SumoXMLTag> allowedAdditionalTags(bool includingInternals);
+    static std::vector<SumoXMLTag> allowedAdditionalTags(bool onlyDrawables);
 
     /// @brief get all editable for tag shape elements
-    static std::vector<SumoXMLTag> allowedShapeTags(bool includingInternals);
+    static std::vector<SumoXMLTag> allowedShapeTags(bool onlyDrawables);
 
     /// @brief return the number of attributes of the tag with the most highter number of attributes
     static int getHigherNumberOfAttributes();
@@ -448,10 +503,13 @@ public:
     /// @brief parse a string of booleans (1 0 1 1....) using AND operation
     static bool parseStringToANDBool(const std::string& string);
 
-    /// @brief true if value is a valid sumo ID
+    /// @brief return true if value is a valid sumo ID
     static bool isValidID(const std::string& value);
 
-    /// @brief true if value is a valid file value
+    /// @brief return true if value is a valid sumo ID
+    static bool isValidName(const std::string& value);
+
+    /// @brief return true if value is a valid file value
     static bool isValidFilename(const std::string& value);
 
     /// @brief default value for invalid positions (used by POIs and Polygons)
@@ -459,11 +517,21 @@ public:
 
     /// @brief Parse attribute from XML and show warnings if there are problems parsing it
     template <typename T>
-    static T parseAttributeFromXML(const SUMOSAXAttributes& attrs, const std::string& objectID, const SumoXMLTag tag, const SumoXMLAttr attribute, bool& abort/*, T optional*/) {
+    static T parseAttributeFromXML(const SUMOSAXAttributes& attrs, const std::string& objectID, const SumoXMLTag tag, const SumoXMLAttr attribute, bool& abort) {
         bool parsedOk = true;
+        // obtain tag properties
+        const auto &tagProperties = getTagProperties(tag);
+        // first check if attribute is deprecated
+        if (tagProperties.isAttributeDeprecated(attribute)) {
+            // show warning if deprecateda ttribute is in the SUMOSAXAttributes
+            if (attrs.hasAttribute(attribute)) {
+                WRITE_WARNING("Attribute " + toString(attribute) + "' of " + toString(tag) + " is deprecated and will not be loaded.");
+            }
+            return parse<T>("");
+        }
         std::string defaultValue, parsedAttribute;
         // obtain attribute properties (Only for improving efficiency)
-        const auto &attrProperties = getTagProperties(tag).getAttribute(attribute);
+        const auto &attrProperties = tagProperties.getAttribute(attribute);
         // set additionalOfWarningMessage
         std::string additionalOfWarningMessage;
         if (objectID != "") {
@@ -502,10 +570,14 @@ public:
             // Set extra checks for int values
             if (attrProperties.isInt()) {
                 if (canParse<int>(parsedAttribute)) {
-                    // parse to int and check if can be negative
+                    // obtain int value
                     int parsedIntAttribute = parse<int>(parsedAttribute);
-                    if (attrProperties.isPositive() && parsedIntAttribute < 0) {
+                    // check if attribute can be negative or zero
+                    if (attrProperties.isPositive() && (parsedIntAttribute < 0)) {
                         errorFormat = "Cannot be negative; ";
+                        parsedOk = false;
+                    } else if (attrProperties.isntZero() && (parsedIntAttribute == 0)) {
+                        errorFormat = "Cannot be zero; ";
                         parsedOk = false;
                     }
                 } else if (canParse<double>(parsedAttribute)) {
@@ -519,9 +591,14 @@ public:
             // Set extra checks for float(double) values
             if (attrProperties.isFloat()) {
                 if (canParse<double>(parsedAttribute)) {
-                    // parse to double and check if can be negative
-                    if (attrProperties.isPositive() && parse<double>(parsedAttribute) < 0) {
+                    // obtain double value
+                    double parsedDoubleAttribute = parse<double>(parsedAttribute);
+                    //check if can be negative and Zero
+                    if (attrProperties.isPositive() && (parsedDoubleAttribute < 0)) {
                         errorFormat = "Cannot be negative; ";
+                        parsedOk = false;
+                    } else if (attrProperties.isntZero() && (parsedDoubleAttribute == 0)) {
+                        errorFormat = "Cannot be zero; ";
                         parsedOk = false;
                     }
                 } else {
@@ -572,6 +649,11 @@ public:
                     errorFormat = "Filename cannot be empty; ";
                     parsedOk = false;
                 }
+            }
+            // set extra check for name values
+            if ((attribute == SUMO_ATTR_NAME) && !isValidName(parsedAttribute)) {
+                errorFormat = "name contains invalid characters; ";
+                parsedOk = false;
             }
             // set extra check for SVCPermissions values
             if (attrProperties.isVClass()) {
@@ -627,11 +709,6 @@ public:
 
     /// @brief function to calculate circle resolution for all circles drawn in drawGL(...) functions
     static int getCircleResolution(const GUIVisualizationSettings& settings);
-
-    /**@brief write attribute if is essential or if is optional AND is different of default value 
-     * (Note: This solution is temporal, see #4049)
-     */
-    void writeAttribute(OutputDevice& device, SumoXMLAttr key) const;
 
 protected:
     /// @brief boolean to check if this AC is selected (instead of GUIGlObjectStorage)

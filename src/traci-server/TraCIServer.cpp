@@ -240,7 +240,7 @@ TraCIServer::wasClosed() {
 
 
 void
-TraCIServer::vehicleStateChanged(const SUMOVehicle* const vehicle, MSNet::VehicleState to) {
+TraCIServer::vehicleStateChanged(const SUMOVehicle* const vehicle, MSNet::VehicleState to, const std::string& /*info*/) {
     if (!myDoCloseConnection) {
         myVehicleStateChanges[to].push_back(vehicle->getID());
         if (!myAmEmbedded) {
@@ -839,6 +839,9 @@ TraCIServer::dispatchCommand() {
             case CMD_SUBSCRIBE_GUI_CONTEXT:
                 success = addObjectVariableSubscription(commandId, true);
                 break;
+            case CMD_ADD_SUBSCRIPTION_FILTER:
+                success = addSubscriptionFilter();
+                break;
             default:
                 writeStatusCmd(commandId, RTYPE_NOTIMPLEMENTED, "Command not implemented in sumo");
         }
@@ -988,9 +991,10 @@ TraCIServer::writeErrorStatusCmd(int commandId, const std::string& description, 
 
 
 void
-TraCIServer::initialiseSubscription(const libsumo::Subscription& s) {
+TraCIServer::initialiseSubscription(libsumo::Subscription& s) {
     tcpip::Storage writeInto;
     std::string errors;
+    libsumo::Subscription* modifiedSubscription = nullptr;
     if (processSingleSubscription(s, writeInto, errors)) {
         if (s.endTime < MSNet::getInstance()->getCurrentTimeStep()) {
             writeStatusCmd(s.commandId, RTYPE_ERR, "Subscription has ended.");
@@ -1009,11 +1013,13 @@ TraCIServer::initialiseSubscription(const libsumo::Subscription& s) {
                         }
                     }
                     needNewSubscription = false;
+                    modifiedSubscription = &o;
                     break;
                 }
             }
             if (needNewSubscription) {
                 mySubscriptions.push_back(s);
+                modifiedSubscription = &s;
                 // Add new subscription to subscription cache (note: seems a bit inefficient)
                 if (s.beginTime < MSNet::getInstance()->getCurrentTimeStep()) {
                     // copy new subscription into cache
@@ -1030,6 +1036,13 @@ TraCIServer::initialiseSubscription(const libsumo::Subscription& s) {
             }
             writeStatusCmd(s.commandId, RTYPE_OK, "");
         }
+        if (modifiedSubscription != nullptr && isVehicleToVehicleContextSubscription(*modifiedSubscription)) {
+            // Set last modified vehicle context subscription active for filter modifications
+            myLastContextSubscription = modifiedSubscription;
+        } else {
+            // adding other subscriptions deactivates the activation for filter addition
+            myLastContextSubscription = nullptr;
+        }
     } else {
         writeStatusCmd(s.commandId, RTYPE_ERR, "Could not add subscription (" + errors + ").");
     }
@@ -1040,9 +1053,14 @@ TraCIServer::initialiseSubscription(const libsumo::Subscription& s) {
 void
 TraCIServer::removeSubscription(int commandId, const std::string& id, int domain) {
     bool found = false;
-    for (std::vector<libsumo::Subscription>::iterator j = mySubscriptions.begin(); j != mySubscriptions.end();) {
-        if ((*j).id == id && (*j).commandId == commandId && (domain < 0 || (*j).contextDomain == domain)) {
+    std::vector<libsumo::Subscription>::iterator j;
+    for (j = mySubscriptions.begin(); j != mySubscriptions.end();) {
+        if (j->id == id && j->commandId == commandId && (domain < 0 || j->contextDomain == domain)) {
             j = mySubscriptions.erase(j);
+            if (j != mySubscriptions.end() && myLastContextSubscription == &(*j)) {
+                // Remove also reference for filter additions
+                myLastContextSubscription = nullptr;
+            }
             found = true;
             continue;
         }
@@ -1052,8 +1070,13 @@ TraCIServer::removeSubscription(int commandId, const std::string& id, int domain
     if (found) {
         writeStatusCmd(commandId, RTYPE_OK, "");
     } else {
-        writeStatusCmd(commandId, RTYPE_OK, "The subscription to remove was not found.");
+        writeStatusCmd(commandId, RTYPE_ERR, "The subscription to remove was not found.");
     }
+}
+
+bool
+TraCIServer::isVehicleToVehicleContextSubscription(const libsumo::Subscription& s) {
+    return (s.commandId == CMD_SUBSCRIBE_VEHICLE_CONTEXT && s.contextDomain == CMD_GET_VEHICLE_VARIABLE);
 }
 
 
@@ -1264,6 +1287,166 @@ TraCIServer::addObjectVariableSubscription(const int commandId, const bool hasCo
 }
 
 
+
+bool
+TraCIServer::addSubscriptionFilter() {
+    bool success  = true;
+    // Read filter type
+    int filterType = myInputStorage.readUnsignedByte();
+
+    // dispatch according to filter type
+    switch (filterType) {
+    case FILTER_TYPE_NONE:
+        // Remove all filters
+        removeFilters();
+        break;
+    case FILTER_TYPE_LANES:
+    {
+        // Read relative lanes to consider for context filter
+        int nrLanes = myInputStorage.readInt();
+        std::vector<int> lanes;
+        for (int i=0; i<nrLanes; ++i) {
+            lanes.push_back((int) myInputStorage.readByte());
+        }
+        addSubscriptionFilterLanes(lanes);
+    }
+    break;
+    case FILTER_TYPE_NOOPPOSITE:
+        // Add no-opposite filter
+        addSubscriptionFilterNoOpposite();
+        break;
+    case FILTER_TYPE_DOWNSTREAM_DIST:
+    {
+        double dist = myInputStorage.readDouble();
+        addSubscriptionFilterDownstreamDistance(dist);
+    }
+    break;
+    case FILTER_TYPE_UPSTREAM_DIST:
+    {
+        double dist = myInputStorage.readDouble();
+        addSubscriptionFilterUpstreamDistance(dist);
+    }
+    break;
+    case FILTER_TYPE_CF_MANEUVER:
+        addSubscriptionFilterCFManeuver();
+        break;
+    case FILTER_TYPE_LC_MANEUVER:
+    {
+        int dir = int(myInputStorage.readByte());
+        addSubscriptionFilterLCManeuver(dir);
+    }
+        break;
+    case FILTER_TYPE_TURN_MANEUVER:
+        addSubscriptionFilterTurnManeuver();
+        break;
+    case FILTER_TYPE_VCLASS:
+    {
+        SVCPermissions vClasses = parseVehicleClasses(myInputStorage.readStringList());
+        addSubscriptionFilterVClass(vClasses);
+    }
+    break;
+    case FILTER_TYPE_VTYPE:
+    {
+        std::vector<std::string> vTypes = myInputStorage.readStringList();
+        addSubscriptionFilterVType(vTypes);
+    }
+    break;
+    default:
+        writeStatusCmd(filterType, RTYPE_NOTIMPLEMENTED, "'" + toString(filterType) + "' is no valid filter type code.");
+        success  = false;
+    }
+
+    // acknowledge filter addition
+    return success;
+}
+
+
+void
+TraCIServer::removeFilters() {
+    std::cout << "Removing filters" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = libsumo::SUBS_FILTER_NONE;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterLanes(std::vector<int> lanes) {
+    std::cout << "Adding lane filter (lanes=" << toString(lanes) << ")" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_LANES;
+        myLastContextSubscription->filterLanes = lanes;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterNoOpposite() {
+    std::cout << "Adding no opposite filter" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_NOOPPOSITE;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterDownstreamDistance(double dist) {
+    std::cout << "Adding downstream dist filter (dist=" << toString(dist) << ")" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_DOWNSTREAM_DIST;
+        myLastContextSubscription->filterDownstreamDist = dist;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterUpstreamDistance(double dist) {
+    std::cout << "Adding upstream dist filter (dist=" << toString(dist) << ")" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_UPSTREAM_DIST;
+        myLastContextSubscription->filterUpstreamDist = dist;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterCFManeuver() {
+    std::cout << "Adding CF-maneuver filter" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_CF_MANEUVER;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterLCManeuver(int dir) {
+    std::cout << "Adding LC-maneuver filter (direction = " << dir << ")" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_LC_MANEUVER;
+        myLastContextSubscription->filterLCDir = dir;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterTurnManeuver() {
+    std::cout << "Adding turn-maneuver filter" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_TURN_MANEUVER;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterVClass(SVCPermissions vClasses) {
+    std::cout << "Adding vClass filter (vClasses=" << toString(vClasses) << ")" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_VCLASS;
+        myLastContextSubscription->filterVClasses = vClasses;
+    }
+}
+
+void
+TraCIServer::addSubscriptionFilterVType(std::vector<std::string> vTypes) {
+    std::cout << "Adding vType filter (vTypes=" << toString(vTypes) << ")" << std::endl;
+    if (myLastContextSubscription != nullptr) {
+        myLastContextSubscription->activeFilters = myLastContextSubscription->activeFilters | libsumo::SUBS_FILTER_VTYPE;
+        myLastContextSubscription->filterVTypes = vTypes;
+    }
+}
+
 void
 TraCIServer::writeResponseWithLength(tcpip::Storage& outputStorage, tcpip::Storage& tempMsg) {
     if (tempMsg.size() < 254) {
@@ -1274,7 +1457,6 @@ TraCIServer::writeResponseWithLength(tcpip::Storage& outputStorage, tcpip::Stora
     }
     outputStorage.writeStorage(tempMsg);
 }
-
 
 bool
 TraCIServer::readTypeCheckingInt(tcpip::Storage& inputStorage, int& into) {

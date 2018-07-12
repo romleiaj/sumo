@@ -22,7 +22,6 @@ hard coded into this script.
 """
 from __future__ import absolute_import
 from __future__ import print_function
-import re
 import io
 from datetime import date
 import optparse
@@ -98,6 +97,7 @@ def runTests(options, env, gitrev, debugSuffix=""):
     subprocess.call([ttBin, "-b", env["FILEPREFIX"], "-coll"], env=env,
                     stdout=log, stderr=subprocess.STDOUT, shell=True)
     log.close()
+
 
 def generateCMake(generator, log, checkOptionalLibs, python):
     buildDir = os.path.join(env["SUMO_HOME"], "build", "cmake-build-" + generator.replace(" ", "-"))
@@ -236,7 +236,8 @@ for platform, dllDir in platformDlls:
             for dllPath in (os.path.join(options.rootDir, dllDir), debugDllPath):
                 for f in glob.glob(os.path.join(dllPath, "*.dll")) + glob.glob(os.path.join(dllPath, "*", "*.dll")):
                     zipf.write(f, os.path.join(binDir, f[len(dllPath) + 1:]))
-            for f in glob.glob(os.path.join(options.rootDir, options.binDir, "*D.exe")) + glob.glob(os.path.join(options.rootDir, options.binDir, "*D.pdb")):
+            for f in (glob.glob(os.path.join(options.rootDir, options.binDir, "*D.exe")) +
+                      glob.glob(os.path.join(options.rootDir, options.binDir, "*D.pdb"))):
                 zipf.write(f, os.path.join(binDir, os.path.basename(f)))
             zipf.close()
         except IOError as ziperr:

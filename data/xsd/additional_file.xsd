@@ -5,6 +5,7 @@
     <xsd:include schemaLocation="meandataTypes.xsd"/>
 
     <xsd:element name="additional" type="additionalType"/>
+    <xsd:element name="rerouterValue" type="rerouterValuesType"/>
     
     <xsd:complexType name="additionalType">
         <xsd:choice maxOccurs="unbounded">
@@ -58,6 +59,52 @@
 
     </xsd:complexType>
     
+    <xsd:complexType name="rerouterValuesType">
+        <xsd:sequence minOccurs="0">
+            <xsd:element name="interval" minOccurs="1" maxOccurs="unbounded">
+                <xsd:complexType>
+                    <xsd:choice maxOccurs="unbounded">
+                        <xsd:element name="closingReroute">
+                            <xsd:complexType>
+                                <xsd:attribute name="id" type="xsd:string" use="required"/>
+                                <xsd:attribute name="allow" type="xsd:string" use="optional"/>
+                                <xsd:attribute name="disallow" type="xsd:string" use="optional"/>
+                            </xsd:complexType>
+                        </xsd:element>
+                        <xsd:element name="closingLaneReroute">
+                            <xsd:complexType>
+                                <xsd:attribute name="id" type="xsd:string" use="required"/>
+                                <xsd:attribute name="allow" type="xsd:string" use="optional"/>
+                                <xsd:attribute name="disallow" type="xsd:string" use="optional"/>
+                            </xsd:complexType>
+                        </xsd:element>
+                        <xsd:element name="destProbReroute">
+                            <xsd:complexType>
+                                <xsd:attribute name="id" type="xsd:string" use="required"/>
+                                <xsd:attribute name="probability" type="positiveFloatType"/>
+                            </xsd:complexType>
+                        </xsd:element>
+                        <xsd:element name="routeProbReroute">
+                            <xsd:complexType>
+                                <xsd:attribute name="id" type="xsd:string" use="required"/>
+                                <xsd:attribute name="probability" type="positiveFloatType"/>
+                            </xsd:complexType>
+                        </xsd:element>
+                        <xsd:element name="parkingAreaReroute">
+                            <xsd:complexType>
+                                <xsd:attribute name="id" type="xsd:string" use="required"/>
+                                <xsd:attribute name="probability" type="positiveFloatType"/>
+                                <xsd:attribute name="visible" type="boolType"/>
+                            </xsd:complexType>
+                        </xsd:element>
+                    </xsd:choice>
+                    <xsd:attribute name="begin" type="nonNegativeFloatType" use="required"/>
+                    <xsd:attribute name="end" type="nonNegativeFloatType" use="required"/>
+                </xsd:complexType>
+            </xsd:element>
+        </xsd:sequence>
+    </xsd:complexType>
+
     <xsd:complexType name="e1DetectorType">
         <xsd:attribute name="id" type="xsd:string" use="required"/>
         <xsd:attribute name="lane" type="xsd:string" use="required"/>
@@ -65,6 +112,7 @@
         <xsd:attribute name="freq" type="positiveFloatType" use="required"/>
         <xsd:attribute name="file" type="xsd:string" use="required"/>
         <xsd:attribute name="vTypes" type="xsd:string" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
         <xsd:attribute name="friendlyPos" use="optional" type="boolType"/>
     </xsd:complexType>
 
@@ -86,10 +134,11 @@
         <xsd:attribute name="tl" type="xsd:string" use="optional"/>
         <xsd:attribute name="to" type="xsd:string" use="optional"/>
         <xsd:attribute name="cont" type="boolType" use="optional"/>
-        <xsd:attribute name="timeThreshold" type="xsd:int" use="optional"/>
+        <xsd:attribute name="timeThreshold" type="xsd:float" use="optional"/>
         <xsd:attribute name="speedThreshold" type="xsd:float" use="optional"/>
         <xsd:attribute name="jamThreshold" type="xsd:float" use="optional"/>
         <xsd:attribute name="vTypes" type="xsd:string" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
         <xsd:attribute name="friendlyPos" use="optional" type="boolType"/>
     </xsd:complexType>
 
@@ -107,6 +156,8 @@
         <xsd:attribute name="speedThreshold" type="nonNegativeFloatType" use="optional"/>
         <xsd:attribute name="vTypes" type="xsd:string" use="optional"/>
         <xsd:attribute name="openEntry" type="boolType" use="optional"/>
+        <xsd:attribute name="pos" type="xsd:string" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="detEntryExitType">
@@ -196,6 +247,7 @@
         <xsd:attribute name="id" type="xsd:string" use="required"/>
         <xsd:attribute name="lanes" type="xsd:string" use="required"/>
         <xsd:attribute name="file" type="xsd:string" use="optional"/>
+        <xsd:attribute name="pos" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="routeProbeType">
@@ -205,6 +257,7 @@
         <xsd:attribute name="freq" type="positiveFloatType" use="required"/>
         <xsd:attribute name="file" type="xsd:string" use="required"/>
         <xsd:attribute name="vTypes" type="xsd:string" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="rerouterType">
@@ -242,6 +295,7 @@
                             <xsd:complexType>
                                 <xsd:attribute name="id" type="xsd:string" use="required"/>
                                 <xsd:attribute name="probability" type="positiveFloatType"/>
+                                <xsd:attribute name="visible" type="boolType"/>
                             </xsd:complexType>
                         </xsd:element>
                     </xsd:choice>
@@ -254,7 +308,10 @@
         <xsd:attribute name="edges" type="xsd:string" use="optional"/>
         <xsd:attribute name="file" type="xsd:string" use="optional"/>
         <xsd:attribute name="probability" type="positiveFloatType"/>
+        <xsd:attribute name="vTypes" type="xsd:string" use="optional"/>
         <xsd:attribute name="timeThreshold" type="nonNegativeFloatType" use="optional"/>
+        <xsd:attribute name="pos" type="xsd:string" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="instantInductionLoopType">
@@ -263,6 +320,7 @@
         <xsd:attribute name="pos" type="xsd:float" use="required"/>
         <xsd:attribute name="file" type="xsd:string" use="required"/>
         <xsd:attribute name="friendlyPos" type="boolType" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="stoppingPlaceType">
@@ -299,6 +357,7 @@
         <xsd:attribute name="efficiency" type="xsd:float"/>
         <xsd:attribute name="chargeInTransit" type="xsd:float"/>
         <xsd:attribute name="chargeDelay" type="xsd:float"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="parkingAreaType">
@@ -315,6 +374,7 @@
         <xsd:attribute name="width" type="positiveFloatType" use="optional"/>
         <xsd:attribute name="length" type="positiveFloatType" use="optional"/>
         <xsd:attribute name="angle" type="xsd:float" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="parkingSpaceType">
@@ -339,12 +399,15 @@
         <xsd:attribute name="freq" type="positiveFloatType" use="optional"/>
         <xsd:attribute name="file" type="xsd:string" use="optional"/>
         <xsd:attribute name="output" type="xsd:string" use="optional"/>
+        <xsd:attribute name="routeProbe" type="xsd:string" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="vaporizerType">
         <xsd:attribute name="id" type="xsd:string" use="required"/>
         <xsd:attribute name="begin" type="nonNegativeFloatType" use="optional"/>
         <xsd:attribute name="end" type="nonNegativeFloatType" use="optional"/>
+        <xsd:attribute name="name" type="xsd:string" use="optional"/>
     </xsd:complexType>
 
     <xsd:complexType name="polygonType">

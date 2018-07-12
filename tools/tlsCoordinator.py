@@ -29,12 +29,12 @@ if 'SUMO_HOME' in os.environ:
 else:
     sys.exit("please declare environment variable 'SUMO_HOME'")
 
-from sumolib.output import parse_fast
+from sumolib.output import parse_fast  # noqa
 
 TLTuple = namedtuple('TLTuple', ['edgeID', 'dist', 'time', 'connection'])
 PairKey = namedtuple('PairKey', ['edgeID', 'edgeID2', 'dist'])
-PairData = namedtuple('PairData', ['otl', 'oconnection', 'tl', 'connection', 'betweenOffset', 'startOffset', 'travelTime',
-                                   'prio', 'numVehicles', 'ogreen', 'green'])
+PairData = namedtuple('PairData', ['otl', 'oconnection', 'tl', 'connection', 'betweenOffset', 'startOffset',
+                                   'travelTime', 'prio', 'numVehicles', 'ogreen', 'green'])
 
 
 def pair2str(p, full=True):
@@ -336,6 +336,7 @@ def main(options):
                          '-r', options.routefile,
                          '-a', ','.join(additionals),
                          '-v', '--no-step-log', '--duration-log.statistics'], stdout=sys.stdout)
+
 
 if __name__ == "__main__":
     options = get_options(sys.argv)

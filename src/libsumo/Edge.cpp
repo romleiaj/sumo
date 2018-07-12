@@ -22,11 +22,22 @@
 #include <microsim/MSTransportable.h>
 #include <microsim/MSVehicle.h>
 #include <libsumo/TraCIDefs.h>
+#include <traci-server/TraCIConstants.h>
 #include <utils/emissions/HelpersHarmonoise.h>
 #include "Edge.h"
 
 
 namespace libsumo {
+// ===========================================================================
+// static member initializations
+// ===========================================================================
+SubscriptionResults Edge::mySubscriptionResults;
+ContextSubscriptionResults Edge::myContextSubscriptionResults;
+
+
+// ===========================================================================
+// static member definitions
+// ===========================================================================
 std::vector<std::string>
 Edge::getIDList() {
     std::vector<std::string> ids;
@@ -324,37 +335,37 @@ Edge::setParameter(const std::string& id, const std::string& name, const std::st
 
 void
 Edge::subscribe(const std::string& objID, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime) {
-
+    libsumo::Helper::subscribe(CMD_SUBSCRIBE_EDGE_VARIABLE, objID, vars, beginTime, endTime);
 }
 
 
 void
 Edge::subscribeContext(const std::string& objID, int domain, double range, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime) {
-
+    libsumo::Helper::subscribe(CMD_SUBSCRIBE_EDGE_CONTEXT, objID, vars, beginTime, endTime, domain, range);
 }
 
 
-const SubscribedValues
+const SubscriptionResults
 Edge::getSubscriptionResults() {
-    return SubscribedValues();
+    return mySubscriptionResults;
 }
 
 
-const TraCIValues
+const TraCIResults
 Edge::getSubscriptionResults(const std::string& objID) {
-    return TraCIValues();
+    return mySubscriptionResults[objID];
 }
 
 
-const SubscribedContextValues
+const ContextSubscriptionResults
 Edge::getContextSubscriptionResults() {
-    return SubscribedContextValues();
+    return myContextSubscriptionResults;
 }
 
 
-const SubscribedValues
+const SubscriptionResults
 Edge::getContextSubscriptionResults(const std::string& objID) {
-    return SubscribedValues();
+    return myContextSubscriptionResults[objID];
 }
 
 

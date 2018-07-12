@@ -53,8 +53,9 @@
 RORouteHandler::RORouteHandler(RONet& net, const std::string& file,
                                const bool tryRepair,
                                const bool emptyDestinationsAllowed,
-                               const bool ignoreErrors) :
-    SUMORouteHandler(file),
+                               const bool ignoreErrors,
+                               const bool checkSchema) :
+    SUMORouteHandler(file, checkSchema ? "routes" : ""),
     myNet(net),
     myActivePerson(0),
     myActiveContainerPlan(0),
@@ -347,6 +348,23 @@ RORouteHandler::closeRoute(const bool mayBeDisconnected) {
         myActiveRouteID = "";
         myActiveRouteStops.clear();
         return;
+    }
+    if (!mayBeDisconnected && OptionsCont::getOptions().exists("no-internal-links") && !OptionsCont::getOptions().getBool("no-internal-links")) {
+        // fix internal edges which did not get parsed
+        const ROEdge* last = nullptr;
+        ConstROEdgeVector fullRoute;
+        for (const ROEdge* roe : myActiveRoute) {
+            if (last != nullptr) {
+                for (const ROEdge* intern : last->getSuccessors()) {
+                    if (intern->isInternal() && intern->getSuccessors().size() == 1 && intern->getSuccessors().front() == roe) {
+                        fullRoute.push_back(intern);
+                    }
+                }
+            }
+            fullRoute.push_back(roe);
+            last = roe;
+        }
+        myActiveRoute = fullRoute;
     }
     RORoute* route = new RORoute(myActiveRouteID, myCurrentCosts, myActiveRouteProbability, myActiveRoute,
                                  myActiveRouteColor, myActiveRouteStops);

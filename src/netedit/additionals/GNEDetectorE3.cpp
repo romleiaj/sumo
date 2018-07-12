@@ -55,8 +55,8 @@
 // member method definitions
 // ===========================================================================
 
-GNEDetectorE3::GNEDetectorE3(const std::string& id, GNEViewNet* viewNet, Position pos, double freq, const std::string& filename, const double timeThreshold, double speedThreshold, bool blockMovement) :
-    GNEAdditional(id, viewNet, GLO_E3DETECTOR, SUMO_TAG_E3DETECTOR, true, blockMovement),
+GNEDetectorE3::GNEDetectorE3(const std::string& id, GNEViewNet* viewNet, Position pos, double freq, const std::string& filename, const std::string& name, const double timeThreshold, double speedThreshold, bool blockMovement) :
+    GNEAdditional(id, viewNet, GLO_E3DETECTOR, SUMO_TAG_E3DETECTOR, name, blockMovement),
     myPosition(pos),
     myFreq(freq),
     myFilename(filename),
@@ -113,52 +113,6 @@ GNEDetectorE3::commitGeometryMoving(const Position& oldPos, GNEUndoList* undoLis
     undoList->p_begin("position of " + toString(getTag()));
     undoList->p_add(new GNEChange_Attribute(this, SUMO_ATTR_POSITION, toString(myPosition), true, toString(oldPos)));
     undoList->p_end();
-}
-
-
-void
-GNEDetectorE3::writeAdditional(OutputDevice& device) const {
-    // Only save E3 if have Entry/Exits
-    if (myAdditionalChilds.size() > 0) {
-        // Write parameters
-        device.openTag(getTag());
-        writeAttribute(device, SUMO_ATTR_ID);
-        writeAttribute(device, SUMO_ATTR_FREQUENCY);
-        if (!myFilename.empty()) {
-            writeAttribute(device, SUMO_ATTR_FILE);
-        }
-        writeAttribute(device, SUMO_ATTR_HALTING_TIME_THRESHOLD);
-        writeAttribute(device, SUMO_ATTR_HALTING_SPEED_THRESHOLD);
-        writeAttribute(device, SUMO_ATTR_POSITION);
-        // Write entrys and exits
-        for (auto i : myAdditionalChilds) {
-            i->writeAdditional(device);
-        }
-        // Close E3 tag
-        device.closeTag();
-    } else {
-        WRITE_WARNING(toString(getTag()) + " with ID '" + getID() + "' cannot be writed in additional file because doesn't have childs.");
-    }
-}
-
-
-std::string
-GNEDetectorE3::generateEntryID() {
-    int counter = 0;
-    while (myViewNet->getNet()->getAdditional(SUMO_TAG_DET_ENTRY, getID() + toString(SUMO_TAG_DET_ENTRY) + toString(counter)) != nullptr) {
-        counter++;
-    }
-    return (getID() + toString(SUMO_TAG_DET_ENTRY) + toString(counter));
-}
-
-
-std::string
-GNEDetectorE3::generateExitID() {
-    int counter = 0;
-    while (myViewNet->getNet()->getAdditional(SUMO_TAG_DET_EXIT, getID() + toString(SUMO_TAG_DET_EXIT) + toString(counter)) != nullptr) {
-        counter++;
-    }
-    return (getID() + toString(SUMO_TAG_DET_EXIT) + toString(counter));
 }
 
 
@@ -219,6 +173,8 @@ GNEDetectorE3::getAttribute(SumoXMLAttr key) const {
             return toString(myPosition);
         case SUMO_ATTR_FREQUENCY:
             return toString(myFreq);
+        case SUMO_ATTR_NAME:
+            return myAdditionalName;
         case SUMO_ATTR_FILE:
             return myFilename;
         case SUMO_ATTR_HALTING_TIME_THRESHOLD:
@@ -246,16 +202,13 @@ GNEDetectorE3::setAttribute(SumoXMLAttr key, const std::string& value, GNEUndoLi
             undoList->p_add(new GNEChange_Attribute(this, key, value));
             // Change Ids of all Entry/Exits childs
             for (auto i : myAdditionalChilds) {
-                if (i->getTag() == SUMO_TAG_ENTRY) {
-                    i->setAttribute(SUMO_ATTR_ID, generateEntryID(), undoList);
-                } else {
-                    i->setAttribute(SUMO_ATTR_ID, generateExitID(), undoList);
-                }
+                i->setAttribute(SUMO_ATTR_ID, generateAdditionalChildID(i->getTag()), undoList);
             }
             break;
         }
         case SUMO_ATTR_FREQUENCY:
         case SUMO_ATTR_POSITION:
+        case SUMO_ATTR_NAME:
         case SUMO_ATTR_FILE:
         case SUMO_ATTR_HALTING_TIME_THRESHOLD:
         case SUMO_ATTR_HALTING_SPEED_THRESHOLD:
@@ -278,6 +231,8 @@ GNEDetectorE3::isValid(SumoXMLAttr key, const std::string& value) {
             return canParse<Position>(value);
         case SUMO_ATTR_FREQUENCY:
             return canParse<double>(value) && (parse<double>(value) >= 0);
+        case SUMO_ATTR_NAME:
+            return isValidName(value);
         case SUMO_ATTR_FILE:
             return isValidFilename(value);
         case SUMO_ATTR_HALTING_TIME_THRESHOLD:
@@ -294,6 +249,45 @@ GNEDetectorE3::isValid(SumoXMLAttr key, const std::string& value) {
 }
 
 
+bool 
+GNEDetectorE3::checkAdditionalChildRestriction() const {
+    int numEntrys = 0;
+    int numExits = 0;
+    // iterate over additional chidls and obtain number of entrys and exits
+    for (auto i : myAdditionalChilds) {
+        if (i->getTag() == SUMO_TAG_DET_ENTRY) {
+            numEntrys++;
+        } else if (i->getTag() == SUMO_TAG_DET_EXIT) {
+            numExits++;
+        }
+    }
+    // write warnings
+    if(numEntrys == 0) {
+        WRITE_WARNING("An " + toString(SUMO_TAG_E3DETECTOR) + " need at least one " + toString(SUMO_TAG_DET_ENTRY) + " detector");
+    }
+     if(numExits == 0) {
+        WRITE_WARNING("An " + toString(SUMO_TAG_E3DETECTOR) + " need at least one " + toString(SUMO_TAG_DET_EXIT) + " detector");
+    }
+    // return false depending of number of Entrys and Exits
+     return ((numEntrys != 0) && (numExits != 0));
+}
+
+
+std::string 
+GNEDetectorE3::getPopUpID() const {
+    return toString(getTag()) + ":" + getID();
+}
+
+
+std::string 
+GNEDetectorE3::getHierarchyName() const {
+    return toString(getTag());
+}
+
+// ===========================================================================
+// private
+// ===========================================================================
+
 void
 GNEDetectorE3::setAttribute(SumoXMLAttr key, const std::string& value) {
     switch (key) {
@@ -305,6 +299,9 @@ GNEDetectorE3::setAttribute(SumoXMLAttr key, const std::string& value) {
             break;
         case SUMO_ATTR_FREQUENCY:
             myFreq = parse<double>(value);
+            break;
+        case SUMO_ATTR_NAME:
+            myAdditionalName = value;
             break;
         case SUMO_ATTR_FILE:
             myFilename = value;

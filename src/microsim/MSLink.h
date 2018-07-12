@@ -462,6 +462,9 @@ public:
     /// @brief return whether the fromLane of this link is an internal lane and toLane is a normal lane
     bool isExitLink() const;
 
+    /// @brief return whether the fromLane of this link is an internal lane and its incoming lane is also an internal lane
+    bool isExitLinkAfterInternalJunction() const;
+
     /// @brief returns the corresponding exit link for entryLinks to a junction.
     MSLink* getCorrespondingExitLink() const;
 
@@ -530,6 +533,9 @@ private:
 
     /// @brief figure out whether the cont status remains in effect when switching off the tls
     bool checkContOff() const;
+
+    /// @brief check if the lane intersects with a foe cont-lane
+    bool contIntersect(const MSLane* lane, const MSLane* foe); 
 
 private:
     /// @brief The lane behind the junction approached by this link

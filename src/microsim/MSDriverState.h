@@ -14,6 +14,11 @@
 ///
 // A class representing a vehicle driver's current mental state
 /****************************************************************************/
+
+
+/// @todo: check parameter admissibility in setter methods
+
+
 #ifndef MSDriverState_h
 #define MSDriverState_h
 
@@ -68,6 +73,15 @@ public:
         myState = state;
     };
 
+    inline double getNoiseIntensity() const {
+        return myNoiseIntensity;
+    };
+
+    inline double getTimeScale() const {
+        return myTimeScale;
+    };
+
+
     /// @brief Obtain the current state of the process
     double getState() const;
 
@@ -84,6 +98,8 @@ private:
      */
     double myNoiseIntensity;
 
+    /// @brief Random generator for OUProcesses
+    static std::mt19937 myRNG;
 };
 
 
@@ -96,11 +112,107 @@ public:
     MSSimpleDriverState(MSVehicle* veh);
     virtual ~MSSimpleDriverState() {};
 
+
+    /// @name Getter methods
+    ///@{
+    inline double getMinAwareness() const {
+        return myMinAwareness;
+    }
+
+    inline double getInitialAwareness() const {
+        return myInitialAwareness;
+    }
+
+    inline double getErrorTimeScaleCoefficient() const {
+        return myErrorTimeScaleCoefficient;
+    }
+
+    inline double getErrorNoiseIntensityCoefficient() const {
+        return myErrorNoiseIntensityCoefficient;
+    }
+
+    inline double getErrorTimeScale() const {
+        return myError.getTimeScale();
+    }
+
+    inline double getErrorNoiseIntensity() const {
+        return myError.getNoiseIntensity();
+    }
+
+    inline double getSpeedDifferenceErrorCoefficient() const {
+        return mySpeedDifferenceErrorCoefficient;
+    }
+
+    inline double getHeadwayErrorCoefficient() const {
+        return myHeadwayErrorCoefficient;
+    }
+
+    inline double getSpeedDifferenceChangePerceptionThreshold() const {
+        return mySpeedDifferenceChangePerceptionThreshold;
+    }
+
+    inline double getHeadwayChangePerceptionThreshold() const {
+        return myHeadwayChangePerceptionThreshold;
+    }
+
+    inline double getAwareness() const {
+        return myAwareness;
+    }
+
+    inline double getErrorState() const {
+        return myError.getState();
+    };
+    ///@}
+
+
+    /// @name Setter methods
+    ///@{
+    inline void setMinAwareness(const double value)  {
+        myMinAwareness = value;
+    }
+
+    inline void setInitialAwareness(const double value)  {
+        myInitialAwareness = value;
+    }
+
+    inline void setErrorTimeScaleCoefficient(const double value)  {
+        myErrorTimeScaleCoefficient = value;
+    }
+
+    inline void setErrorNoiseIntensityCoefficient(const double value)  {
+        myErrorNoiseIntensityCoefficient = value;
+    }
+
+    inline void setSpeedDifferenceErrorCoefficient(const double value)  {
+        mySpeedDifferenceErrorCoefficient = value;
+    }
+
+    inline void setHeadwayErrorCoefficient(const double value)  {
+        myHeadwayErrorCoefficient = value;
+    }
+
+    inline void setSpeedDifferenceChangePerceptionThreshold(const double value)  {
+        mySpeedDifferenceChangePerceptionThreshold = value;
+    }
+
+    inline void setHeadwayChangePerceptionThreshold(const double value)  {
+        myHeadwayChangePerceptionThreshold = value;
+    }
+
     void setAwareness(const double value);
 
-    double getError() const {
-        return myError.getState();
+    inline void setErrorState(const double state) {
+        myError.setState(state);
+    };
+
+    inline void setErrorTimeScale(const double value)  {
+        myError.setTimeScale(value);
     }
+
+    inline void setErrorNoiseIntensity(const double value)  {
+        myError.setNoiseIntensity(value);
+    }
+    ///@}
 
     /// @brief Trigger updates for the errorProcess, assumed gaps, etc
     void update();
@@ -154,6 +266,8 @@ private:
     double myAwareness;
     // @brief Minimal value for 'awareness' \in [0,1]
     double myMinAwareness;
+    // @brief Initial value for 'awareness' \in [0,1]
+    double myInitialAwareness;
     // @brief Driver's 'error', @see TCI_Model
     OUProcess myError;
     /// @brief Coefficient controlling the impact of awareness on the time scale of the error process
@@ -558,13 +672,14 @@ struct DriverStateDefaults {
 //    static double myOppositeDirectionDrivingFactor;
 
     // for MSSimpleDriverState
-    static double myMinAwareness;
-    static double myErrorTimeScaleCoefficient;
-    static double myErrorNoiseIntensityCoefficient;
-    static double mySpeedDifferenceErrorCoefficient;
-    static double mySpeedDifferenceChangePerceptionThreshold;
-    static double myHeadwayChangePerceptionThreshold;
-    static double myHeadwayErrorCoefficient;
+    static double minAwareness;
+    static double initialAwareness;
+    static double errorTimeScaleCoefficient;
+    static double errorNoiseIntensityCoefficient;
+    static double speedDifferenceErrorCoefficient;
+    static double speedDifferenceChangePerceptionThreshold;
+    static double headwayChangePerceptionThreshold;
+    static double headwayErrorCoefficient;
 };
 
 

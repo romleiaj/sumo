@@ -15,6 +15,7 @@
 
 from __future__ import absolute_import
 from __future__ import print_function
+import sys
 persons = {}
 personsRunning = 0
 
@@ -58,7 +59,7 @@ def evaluate(forTest=False):
     for person in persons.values():
         waitTimes.append(person.depart - person.waitStart)
         route = (person.source, person.target)
-        if not route in routeTimes:
+        if route not in routeTimes:
             routeTimes[route] = []
         routeTimes[route].append(person.arrive - person.depart)
     waitArray = numpy.array(waitTimes)
@@ -72,8 +73,7 @@ def evaluate(forTest=False):
     for route, times in sorted(routeTimes.items()):
         timeArray = numpy.array(times)
         if forTest:
-            print(route, timeArray.max() < 1000, timeArray.mean()
-                  < 1000, math.sqrt(timeArray.var()) < 100)
+            print(route, timeArray.max() < 1000, timeArray.mean() < 1000, math.sqrt(timeArray.var()) < 100)
         else:
             print(route, timeArray.max(), timeArray.mean(),
                   math.sqrt(timeArray.var()))
@@ -91,8 +91,9 @@ def evaluate(forTest=False):
     else:
         print("CO2:", co2)
 
+
 if __name__ == "__main__":
-    from pylab import *
+    from pylab import figure, errorbar, legend, savefig, show, title, xlabel, xlim, ylabel, ylim
     stats = open(sys.argv[1])
     demand = []
     simpleWaitMean = []

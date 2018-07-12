@@ -18,8 +18,8 @@ import sys
 SUMO_HOME = os.environ.get('SUMO_HOME',
                            os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..'))
 sys.path.append(os.path.join(SUMO_HOME, 'tools'))
-from sumolib.miscutils import euclidean
-from sumolib.geomhelper import polygonOffsetWithMinimumDistanceToPoint
+from sumolib.miscutils import euclidean  # noqa
+from sumolib.geomhelper import polygonOffsetWithMinimumDistanceToPoint  # noqa
 
 
 def _getMinPath(paths):
@@ -39,6 +39,7 @@ def mapTrace(trace, net, delta, verbose=False):
     """
     result = ()
     paths = {}
+    lastPos = None
     if verbose:
         print("mapping trace with %s points" % len(trace))
     for pos in trace:

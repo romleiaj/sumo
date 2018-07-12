@@ -115,6 +115,14 @@ public:
     static MSNet* getInstance();
 
 
+    /** @brief Returns whether the network was already constructed
+    * @return whether the network was already constructed
+    */
+    static bool hasInstance() {
+        return myInstance != nullptr;
+    }
+
+
     /** @brief Constructor
      *
      * This constructor builds a net of which only some basic structures are initialised.
@@ -513,8 +521,9 @@ public:
         /** @brief Called if a vehicle changes its state
          * @param[in] vehicle The vehicle which changed its state
          * @param[in] to The state the vehicle has changed to
+         * @param[in] info Additional information on the state change
          */
-        virtual void vehicleStateChanged(const SUMOVehicle* const vehicle, VehicleState to) = 0;
+        virtual void vehicleStateChanged(const SUMOVehicle* const vehicle, VehicleState to, const std::string& info="") = 0;
 
     };
 
@@ -534,9 +543,10 @@ public:
     /** @brief Informs all added listeners about a vehicle's state change
      * @param[in] vehicle The vehicle which changed its state
      * @param[in] to The state the vehicle has changed to
+     * @param[in] info Information regarding the replacement
      * @see VehicleStateListener:vehicleStateChanged
      */
-    void informVehicleStateListener(const SUMOVehicle* const vehicle, VehicleState to);
+    void informVehicleStateListener(const SUMOVehicle* const vehicle, VehicleState to, const std::string& info="");
     /// @}
 
 

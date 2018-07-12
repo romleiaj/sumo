@@ -19,8 +19,8 @@ import os
 import sys
 from collections import defaultdict
 sys.path.append(os.path.join(os.path.dirname(sys.argv[0]), '..'))
-from sumolib.output import parse
-from sumolib.miscutils import Statistics
+from sumolib.output import parse  # noqa
+from sumolib.miscutils import Statistics  # noqa
 
 
 def write_diff(orig, new, out):
@@ -43,7 +43,7 @@ def write_diff(orig, new, out):
                             float(getattr(edge_old, attr))
                         diffStats[attr].add(delta, edge_old.id)
                         f.write(' %s="%s"' % (attr, delta))
-                    except:
+                    except Exception:
                         pass
                 f.write("/>\n")
             f.write("</interval>\n")

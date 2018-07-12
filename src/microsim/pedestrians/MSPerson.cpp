@@ -58,7 +58,7 @@ MSPerson::MSPersonStage_Walking::MSPersonStage_Walking(const std::string& person
         MSStoppingPlace* toStop,
         SUMOTime walkingTime, double speed,
         double departPos, double arrivalPos, double departPosLat) :
-    MSTransportable::Stage(*route.back(), toStop,
+    MSTransportable::Stage(route.back(), toStop,
                            SUMOVehicleParameter::interpretEdgePos(arrivalPos, route.back()->getLength(), SUMO_ATTR_ARRIVALPOS,
                                    "person '" + personID + "' walking to " + route.back()->getID()),
                            MOVING_WITHOUT_VEHICLE),
@@ -318,7 +318,7 @@ MSPerson::MSPersonStage_Walking::moveToNextEdge(MSPerson* person, SUMOTime curre
 void
 MSPerson::MSPersonStage_Walking::setRouteIndex(MSPerson* person, int routeOffset) {
     assert(routeOffset >= 0);
-    assert(routeOffset < myRoute.size());
+    assert(routeOffset < (int)myRoute.size());
     ((MSEdge*)getEdge())->removePerson(person);
     myRouteStep = myRoute.begin() + routeOffset;
     ((MSEdge*)getEdge())->addPerson(person);
@@ -332,7 +332,7 @@ MSPerson::MSPersonStage_Walking::getMaxSpeed(const MSPerson* person) const {
 std::string
 MSPerson::MSPersonStage_Walking::getStageSummary() const {
     const std::string dest = (getDestinationStop() == 0 ? 
-        " edge '" + getDestination().getID() + "'" : 
+        " edge '" + getDestination()->getID() + "'" : 
         " stop '" + getDestinationStop()->getID() + "'" + (
             getDestinationStop()->getMyName() != "" ? " (" + getDestinationStop()->getMyName() + ")" : ""));
     return "walking to " + dest;
@@ -342,12 +342,12 @@ MSPerson::MSPersonStage_Walking::getStageSummary() const {
 /* -------------------------------------------------------------------------
 * MSPerson::MSPersonStage_Driving - methods
 * ----------------------------------------------------------------------- */
-MSPerson::MSPersonStage_Driving::MSPersonStage_Driving(const MSEdge& destination,
+MSPerson::MSPersonStage_Driving::MSPersonStage_Driving(const MSEdge* destination,
     MSStoppingPlace* toStop, const double arrivalPos, const std::vector<std::string>& lines,
     const std::string& intendedVeh, SUMOTime intendedDepart) :
     MSTransportable::Stage_Driving(destination, toStop,
     SUMOVehicleParameter::interpretEdgePos(
-    arrivalPos, destination.getLength(), SUMO_ATTR_ARRIVALPOS, "person riding to " + destination.getID()),
+    arrivalPos, destination->getLength(), SUMO_ATTR_ARRIVALPOS, "person riding to " + destination->getID()),
     lines,
     intendedVeh, intendedDepart) {
 }
@@ -392,7 +392,7 @@ MSPerson::MSPersonStage_Driving::getStageDescription() const {
 std::string
 MSPerson::MSPersonStage_Driving::getStageSummary() const {
     const std::string dest = (getDestinationStop() == 0 ?
-        " edge '" + getDestination().getID() + "'" :
+        " edge '" + getDestination()->getID() + "'" :
         " stop '" + getDestinationStop()->getID() + "'" + (
         getDestinationStop()->getMyName() != "" ? " (" + getDestinationStop()->getMyName() + ")" : ""));
     const std::string intended = myIntendedVehicleID != "" ?
@@ -427,7 +427,7 @@ MSPerson::MSPersonStage_Driving::routeOutput(OutputDevice& os) const {
     if (getFromEdge() != nullptr) {
         os.writeAttr(SUMO_ATTR_FROM, getFromEdge()->getID());
     }
-    os.writeAttr(SUMO_ATTR_TO, getDestination().getID());
+    os.writeAttr(SUMO_ATTR_TO, getDestination()->getID());
     std::string comment = "";
     if (myDestinationStop != 0) {
         os.writeAttr(SUMO_ATTR_BUS_STOP, myDestinationStop->getID());
@@ -449,11 +449,11 @@ MSPerson::MSPersonStage_Driving::routeOutput(OutputDevice& os) const {
 /* -------------------------------------------------------------------------
 * MSPerson::MSPersonStage_Access - methods
 * ----------------------------------------------------------------------- */
-MSPerson::MSPersonStage_Access::MSPersonStage_Access(const MSEdge& destination, MSStoppingPlace* toStop,
+MSPerson::MSPersonStage_Access::MSPersonStage_Access(const MSEdge* destination, MSStoppingPlace* toStop,
     const double arrivalPos, const double dist, const bool isExit) :
     MSTransportable::Stage(destination, toStop, arrivalPos, ACCESS),
     myDist(dist), myAmExit(isExit) {
-    myPath.push_back(destination.getLanes()[0]->geometryPositionAtOffset(myDestinationStop->getAccessPos(&destination)));
+    myPath.push_back(destination->getLanes()[0]->geometryPositionAtOffset(myDestinationStop->getAccessPos(destination)));
     myPath.push_back(toStop->getLane().geometryPositionAtOffset((toStop->getEndLanePosition() + toStop->getBeginLanePosition())/2));
     if (isExit) {
         myPath = myPath.reverse();
@@ -465,7 +465,7 @@ MSPerson::MSPersonStage_Access::~MSPersonStage_Access() {}
 
 
 void
-MSPerson::MSPersonStage_Access::proceed(MSNet* net, MSTransportable* person, SUMOTime now, Stage* previous) {
+MSPerson::MSPersonStage_Access::proceed(MSNet* net, MSTransportable* person, SUMOTime now, Stage* /* previous */) {
     myDeparted = now;
     myEstimatedArrival = now + TIME2STEPS(myDist / person->getVehicleType().getMaxSpeed());
     net->getBeginOfTimestepEvents()->addEvent(new ProceedCmd(person, &myDestinationStop->getLane().getEdge()), myEstimatedArrival);
@@ -548,19 +548,19 @@ MSPerson::proceed(MSNet* net, SUMOTime time) {
     if (prior->getStageType() == MOVING_WITHOUT_VEHICLE) {
         MSStoppingPlace* const bs = prior->getDestinationStop();
         if (bs != nullptr) {
-            const double accessDist = bs->getAccessDistance(&prior->getDestination());
+            const double accessDist = bs->getAccessDistance(prior->getDestination());
             if (accessDist > 0.) {
-                myStep = myPlan->insert(myStep, new MSPersonStage_Access(prior->getDestination(), bs, bs->getAccessPos(&prior->getDestination()), accessDist, false));
+                myStep = myPlan->insert(myStep, new MSPersonStage_Access(prior->getDestination(), bs, bs->getAccessPos(prior->getDestination()), accessDist, false));
             }
         }
     }
     if (myStep != myPlan->end()) {
-        if ((*myStep)->getStageType() == MOVING_WITHOUT_VEHICLE && (prior->getStageType() != ACCESS || &prior->getDestination() != (*myStep)->getFromEdge())) {
+        if ((*myStep)->getStageType() == MOVING_WITHOUT_VEHICLE && (prior->getStageType() != ACCESS || prior->getDestination() != (*myStep)->getFromEdge())) {
             MSStoppingPlace* const prevStop = prior->getDestinationStop();
             if (prevStop != nullptr) {
                 const double accessDist = prevStop->getAccessDistance((*myStep)->getFromEdge());
                 if (accessDist > 0.) {
-                    myStep = myPlan->insert(myStep, new MSPersonStage_Access(*(*myStep)->getFromEdge(), prevStop, prevStop->getAccessPos((*myStep)->getFromEdge()), accessDist, true));
+                    myStep = myPlan->insert(myStep, new MSPersonStage_Access((*myStep)->getFromEdge(), prevStop, prevStop->getAccessPos((*myStep)->getFromEdge()), accessDist, true));
                 }
             }
         }
@@ -635,13 +635,19 @@ MSPerson::routeOutput(OutputDevice& os) const {
 
 
 void
-MSPerson::reroute(ConstMSEdgeVector& newEdges, int firstIndex, int nextIndex) {
+MSPerson::reroute(ConstMSEdgeVector& newEdges, double departPos, int firstIndex, int nextIndex) {
     assert(nextIndex > firstIndex);
-    //std::cout << " newEdges=" << toString(newEdges) << " firstIndex=" << firstIndex << " nextIndex=" << nextIndex << "\n";
+    //std::cout << SIMTIME << " reroute person " << getID() 
+    //    << "  newEdges=" << toString(newEdges) 
+    //    << " firstIndex=" << firstIndex 
+    //    << " nextIndex=" << nextIndex 
+    //    << " departPos=" << getEdgePos() 
+    //    << " arrivalPos=" <<  getNextStage(nextIndex - 1)->getArrivalPos()
+    //    << "\n";
     MSPerson::MSPersonStage_Walking* newStage = new MSPerson::MSPersonStage_Walking(getID(), newEdges,
             getNextStage(nextIndex - 1)->getDestinationStop(), -1,
             -1,
-            getEdgePos(),
+            departPos,
             getNextStage(nextIndex - 1)->getArrivalPos(), 
             0);
     appendStage(newStage, nextIndex);

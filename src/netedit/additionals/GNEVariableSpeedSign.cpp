@@ -53,11 +53,9 @@
 // member method definitions
 // ===========================================================================
 
-GNEVariableSpeedSign::GNEVariableSpeedSign(const std::string& id, GNEViewNet* viewNet, const Position &pos, const std::vector<GNELane*> &lanes, const std::string& filename, bool blockMovement) :
-    GNEAdditional(id, viewNet, GLO_VSS, SUMO_TAG_VSS, true, blockMovement, lanes),
-    myPosition(pos),
-    myFilename(filename),
-    mySaveInFilename(false) {
+GNEVariableSpeedSign::GNEVariableSpeedSign(const std::string& id, GNEViewNet* viewNet, const Position &pos, const std::vector<GNELane*> &lanes, const std::string& name, bool blockMovement) :
+    GNEAdditional(id, viewNet, GLO_VSS, SUMO_TAG_VSS, name, blockMovement, lanes),
+    myPosition(pos) {
 }
 
 
@@ -121,90 +119,6 @@ GNEVariableSpeedSign::commitGeometryMoving(const Position& oldPos, GNEUndoList* 
     undoList->p_begin("position of " + toString(getTag()));
     undoList->p_add(new GNEChange_Attribute(this, SUMO_ATTR_POSITION, toString(myPosition), true, toString(oldPos)));
     undoList->p_end();
-}
-
-
-void
-GNEVariableSpeedSign::writeAdditional(OutputDevice& device) const {
-    // Write parameters
-    device.openTag(getTag());
-    writeAttribute(device, SUMO_ATTR_ID);
-    writeAttribute(device, SUMO_ATTR_LANES);
-    writeAttribute(device, SUMO_ATTR_POSITION);
-    // If filename isn't empty and save in filename is enabled, save in a different file. In other case, save in the same additional XML
-    if (!myFilename.empty() && mySaveInFilename) {
-        // Write filename attribute
-        writeAttribute(device, SUMO_ATTR_FILE);
-        // Save values in a different file
-        OutputDevice& deviceVSS = OutputDevice::getDevice(/**currentDirectory +**/ myFilename);
-        deviceVSS.openTag("VSS");
-        // write steps
-        for (auto i : mySteps) {
-            i->writeStep(device);
-        }
-        deviceVSS.close();
-    } else {
-        // write steps
-        for (auto i : mySteps) {
-            i->writeStep(device);
-        }
-    }
-    // Close tag
-    device.closeTag();
-}
-
-
-void
-GNEVariableSpeedSign::addVariableSpeedSignStep(GNEVariableSpeedSignStep* step) {
-    auto it = std::find(mySteps.begin(), mySteps.end(), step);
-    if (it == mySteps.end()) {
-        mySteps.push_back(step);
-        // sort steps always after a adding/restoring
-        sortVariableSpeedSignSteps();
-    } else {
-        throw ProcessError("Variable Speed Sign Step already exist");
-    }
-}
-
-
-void
-GNEVariableSpeedSign::removeVariableSpeedSignStep(GNEVariableSpeedSignStep* step) {
-    auto it = std::find(mySteps.begin(), mySteps.end(), step);
-    if (it != mySteps.end()) {
-        mySteps.erase(it);
-        // sort steps always after a adding/restoring
-        sortVariableSpeedSignSteps();
-    } else {
-        throw ProcessError("Variable Speed Sign Step doesn't exist");
-    }
-}
-
-
-const std::vector<GNEVariableSpeedSignStep*>&
-GNEVariableSpeedSign::getVariableSpeedSignSteps() const {
-    return mySteps;
-}
-
-
-void
-GNEVariableSpeedSign::sortVariableSpeedSignSteps() {
-    // declare a vector to keep sorted steps
-    std::vector<GNEVariableSpeedSignStep*> sortedSteps;
-    // sort intervals usin time as criterium
-    while (mySteps.size() > 0) {
-        int time_small = 0;
-        // find the interval with the small begin
-        for (int i = 0; i < (int)mySteps.size(); i++) {
-            if (mySteps.at(i)->getTime() < mySteps.at(time_small)->getTime()) {
-                time_small = i;
-            }
-        }
-        // add it to sorted steps and remove it from mySteps
-        sortedSteps.push_back(mySteps.at(time_small));
-        mySteps.erase(mySteps.begin() + time_small);
-    }
-    // restore mySteps using sorted steps
-    mySteps = sortedSteps;
 }
 
 
@@ -308,8 +222,8 @@ GNEVariableSpeedSign::getAttribute(SumoXMLAttr key) const {
             return parseIDs(myLaneChilds);
         case SUMO_ATTR_POSITION:
             return toString(myPosition);
-        case SUMO_ATTR_FILE:
-            return myFilename;
+        case SUMO_ATTR_NAME:
+            return myAdditionalName;
         case GNE_ATTR_BLOCK_MOVEMENT:
             return toString(myBlockMovement);
         case GNE_ATTR_SELECTED:
@@ -326,10 +240,18 @@ GNEVariableSpeedSign::setAttribute(SumoXMLAttr key, const std::string& value, GN
         return; //avoid needless changes, later logic relies on the fact that attributes have changed
     }
     switch (key) {
-        case SUMO_ATTR_ID:
+        case SUMO_ATTR_ID: {
+            // change ID of Rerouter Interval
+            undoList->p_add(new GNEChange_Attribute(this, key, value));
+            // Change Ids of all Variable Speed Sign
+            for (auto i : myAdditionalChilds) {
+                i->setAttribute(SUMO_ATTR_ID, generateAdditionalChildID(SUMO_TAG_STEP), undoList);
+            }
+            break;
+        }
         case SUMO_ATTR_LANES:
         case SUMO_ATTR_POSITION:
-        case SUMO_ATTR_FILE:
+        case SUMO_ATTR_NAME:
         case GNE_ATTR_BLOCK_MOVEMENT:
         case GNE_ATTR_SELECTED:
             undoList->p_add(new GNEChange_Attribute(this, key, value));
@@ -353,8 +275,8 @@ GNEVariableSpeedSign::isValid(SumoXMLAttr key, const std::string& value) {
             } else {
                 return canParse<std::vector<GNELane*> >(myViewNet->getNet(), value, false);
             }
-        case SUMO_ATTR_FILE:
-            return isValidFilename(value);
+        case SUMO_ATTR_NAME:
+            return isValidName(value);
         case GNE_ATTR_BLOCK_MOVEMENT:
             return canParse<bool>(value);
         case GNE_ATTR_SELECTED:
@@ -364,6 +286,21 @@ GNEVariableSpeedSign::isValid(SumoXMLAttr key, const std::string& value) {
     }
 }
 
+
+std::string 
+GNEVariableSpeedSign::getPopUpID() const {
+    return toString(getTag()) + ": " + getID();
+}
+
+
+std::string 
+GNEVariableSpeedSign::getHierarchyName() const {
+    return toString(getTag());
+}
+
+// ===========================================================================
+// private
+// ===========================================================================
 
 void
 GNEVariableSpeedSign::setAttribute(SumoXMLAttr key, const std::string& value) {
@@ -377,8 +314,8 @@ GNEVariableSpeedSign::setAttribute(SumoXMLAttr key, const std::string& value) {
         case SUMO_ATTR_POSITION:
             myPosition = parse<Position>(value);
             break;
-        case SUMO_ATTR_FILE:
-            myFilename = value;
+        case SUMO_ATTR_NAME:
+            myAdditionalName = value;
             break;
         case GNE_ATTR_BLOCK_MOVEMENT:
             myBlockMovement = parse<bool>(value);

@@ -23,8 +23,8 @@ Secondly the average travel time will be calculate (avg=True).
 from __future__ import absolute_import
 from __future__ import print_function
 
-from pylab import *
-from analysis.Taxi import *
+from pylab import figure, legend, pie, show, subplots_adjust, title, xlabel, xticks, ylabel, yticks
+from analysis.Taxi import SOURCE_FCD, SOURCE_SIMFCD, SOURCE_VTYPE
 import util.Reader as reader
 from util import CalcTime
 from math import sqrt
@@ -104,8 +104,8 @@ def getBars():
             # barsDict[(diff/10)*10]=barsDict.setdefault((diff/10)*10,0)+1
             barsDictSim[
                 (diffSim / 10) * 10] = barsDictSim.setdefault((diffSim / 10) * 10, 0) + 1
-        except TypeError as e:
-            tueNichts = True
+        except TypeError:  # as e:
+            pass
             # print "Error by taxi %s : %s"  %(taxi.id,e.message)
     print("mw", sum(mw) / (len(mw) + 0.0))  # 9.46
     print("standard deviation ", sqrt(sum(stdDev) / (len(stdDev) + 0.0)))
@@ -126,7 +126,7 @@ def getTimeDiff(steps, sim=True):
         else:
             source = SOURCE_VTYPE
         if step.source == source:
-            if times[0] != None:
+            if times[0] is not None:
                 times[1] = step.time
             else:
                 if getSecondEdgeSim:
@@ -134,7 +134,7 @@ def getTimeDiff(steps, sim=True):
                 getSecondEdgeSim = True
         elif step.source == SOURCE_FCD:
             fcdDataNo += 1
-            if times[2] != None:
+            if times[2] is not None:
                 times[3] = step.time
             else:
                 if getSecondEdgeFcd:
@@ -143,7 +143,7 @@ def getTimeDiff(steps, sim=True):
     if fcdDataNo <= 6:
         raise TypeError("not enough values")
 
-    if (None in times and not avg) or (avg and times[2] == None or times[3] == None):
+    if (None in times and not avg) or (avg and times[2] is None or times[3] is None):
         raise TypeError("Can't calculate time difference because not all needed values are available. %s Source:%s" % (
             times, source))
 
@@ -210,8 +210,6 @@ def drawPieChart():
 def drawBarChart():
     """Draws a bar chart with the relative travel time aberrance."""
     barsDictSim, barsDict = getBars()
-    xList = []
-    yList = []
     xListSim = []
     yListSim = []
     under100 = 0
@@ -247,7 +245,7 @@ def drawBarChart():
     xticks(range(-110, 130, 20), size=textsize)
     yticks(size=textsize)
     # b=bar(xList,yList, width=10, alpha=0.5)
-    bSim = bar(xListSim, yListSim, width=10, color="red", alpha=0.5)
+    # bSim = bar(xListSim, yListSim, width=10, color="red", alpha=0.5)
     legend((None,), ('Taxis gesamt: ' + str(sum(barsDictSim.values())),
                      '> 0 Sim. schneller', '< 0 Sim. langsammer'), shadow=True)
     # u'\u00f8'+' Reisezeit: '+str(sum(traveltimeList)/len(traveltimeList))+'s'

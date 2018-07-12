@@ -41,16 +41,12 @@ public:
      * @param[in] edge edge in which this vaporizer is placed
      * @param[in] begin start time of vaporizer
      * @param[in] end end time of vaporizer
+     * @param[in] name Vaporizer name
      */
-    GNEVaporizer(GNEViewNet* viewNet, GNEEdge* edge, double begin, double end);
+    GNEVaporizer(GNEViewNet* viewNet, GNEEdge* edge, double begin, double end, const std::string &name);
 
     /// @brief Destructor
     ~GNEVaporizer();
-
-    /**@brief writte additional element into a xml file
-     * @param[in] device device in which write parameters of additional element
-     */
-    void writeAdditional(OutputDevice& device) const;
 
     /// @name Functions related with geometry of element
     /// @{
@@ -107,6 +103,12 @@ public:
      * @return true if the value is valid, false in other case
      */
     bool isValid(SumoXMLAttr key, const std::string& value);
+
+    /// @brief get PopPup ID (Used in AC Hierarchy)
+    std::string getPopUpID() const;
+
+    /// @brief get Hierarchy Name (Used in AC Hierarchy)
+    std::string getHierarchyName() const;
     /// @}
 
 protected:
@@ -118,9 +120,6 @@ protected:
 
     /// @brief end time in which this vaporizer is placed
     double myEnd;
-
-    /// @brief number of lanes of edge (To improve efficiency)
-    int myNumberOfLanes;
 
 private:
     /// @brief set attribute after validation

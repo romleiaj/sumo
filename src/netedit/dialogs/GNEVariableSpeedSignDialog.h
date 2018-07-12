@@ -53,9 +53,6 @@ public:
     /// @brief destructor
     ~GNEVariableSpeedSignDialog();
 
-    /// @brief get edited Variable Speed Sign
-    GNEVariableSpeedSign* getEditedVariableSpeedSign() const;
-
     /// @name FOX-callbacks
     /// @{
     /// @brief event called after press add row button
@@ -84,14 +81,8 @@ protected:
     /// @brief FOX needs this
     GNEVariableSpeedSignDialog() {}
 
-    /// @brief Pointer to Variable Speed Signal
-    GNEVariableSpeedSign* myEditedVariableSpeedSign;
-
     /// @brief Table with the data
     FXTable* myStepsTable;
-
-    /// @brief Horizontal frame for row elements
-    FXHorizontalFrame* myAddStepFrame;
 
     /// @brief Button for insert row
     FXButton* myAddStepButton;
