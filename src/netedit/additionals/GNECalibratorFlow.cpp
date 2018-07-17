@@ -312,6 +312,8 @@ GNECalibratorFlow::isValid(SumoXMLAttr key, const std::string& value) {
             } else {
                 return canParse<double>(value);
             }
+        case GNE_ATTR_GENERIC:
+            return isGenericParameterValid(value);
         default:
             throw InvalidArgument(toString(getTag()) + " doesn't have an attribute of type '" + toString(key) + "'");
     }
