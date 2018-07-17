@@ -364,6 +364,9 @@ GNEChargingStation::setAttribute(SumoXMLAttr key, const std::string& value) {
                 unselectAttributeCarrier();
             }
             break;
+        case GNE_ATTR_GENERIC:
+            setGenericParameterStr(value);
+            break;
         default:
             throw InvalidArgument(toString(getTag()) + "attribute '" + toString(key) + "' not allowed");
     }
