@@ -628,9 +628,10 @@ TraCIServerAPI_Vehicle::processSet(TraCIServer& server, tcpip::Storage& inputSto
                     }
                 }
 
-                if ((laneIndex < 0) || (laneIndex >= (int)(v->getEdge()->getLanes().size()))) {
+                if ((laneIndex < 0) || (laneIndex >= (int)(v->getEdge()->getLanes().size()) && relative <1)) {
                     return server.writeErrorStatusCmd(CMD_SET_VEHICLE_VARIABLE, "No lane with index '" + toString(laneIndex) + "' on road '" + v->getEdge()->getID() + "'.", outputStorage);
                 }
+
                 if (relative < 1) {
                     libsumo::Vehicle::changeLane(id, laneIndex, duration);
                 }
@@ -1154,19 +1155,6 @@ TraCIServerAPI_Vehicle::processSet(TraCIServer& server, tcpip::Storage& inputSto
         return server.writeErrorStatusCmd(CMD_SET_VEHICLE_VARIABLE, e.what(), outputStorage);
     }
     server.writeStatusCmd(CMD_SET_VEHICLE_VARIABLE, RTYPE_OK, warning, outputStorage);
-    return true;
-}
-
-
-
-// ------ helper functions ------
-bool
-TraCIServerAPI_Vehicle::getPosition(const std::string& id, Position& p) {
-    MSVehicle* v = dynamic_cast<MSVehicle*>(MSNet::getInstance()->getVehicleControl().getVehicle(id));
-    if (v == 0) {
-        return false;
-    }
-    p = v->getPosition();
     return true;
 }
 

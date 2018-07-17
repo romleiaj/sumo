@@ -101,6 +101,8 @@ public:
     static void subscribe(const int commandId, const std::string& id, const std::vector<int>& variables,
                           const SUMOTime beginTime, const SUMOTime endTime, const int contextDomain=0, const double range = 0.);
 
+    static void handleSubscriptions(const SUMOTime t);
+
     /// @brief helper functions
     static TraCIPositionVector makeTraCIPositionVector(const PositionVector& positionVector);
     static TraCIPosition makeTraCIPosition(const Position& position);
@@ -130,6 +132,8 @@ public:
             const std::string& pType, const std::string& vehType);
 
     static std::string getParameter(const std::string& objectID, const std::string& key);
+
+    static void findObjectShape(int domain, const std::string& id, PositionVector& shape);
 
     static void collectObjectsInRange(int domain, const PositionVector& shape, double range, std::set<std::string>& into);
 
@@ -176,10 +180,28 @@ public:
     };
     /// @}
 
-private:
+    class SubscriptionWrapper : public VariableWrapper {
+    public:
+        SubscriptionWrapper(VariableWrapper::SubscriptionHandler handler, SubscriptionResults& into, ContextSubscriptionResults& context);
+        void setContext(const std::string& refID);
+        void wrapDouble(const std::string& objID, const int variable, const double value);
+        void wrapInt(const std::string& objID, const int variable, const int value);
+        void wrapStringList(const std::string& objID, const int variable, const std::vector<std::string> value);
+    private:
+        SubscriptionResults myResults;
+        ContextSubscriptionResults myContextResults;
+        SubscriptionResults& myActiveResults;
+    };
 
+private:
+    static void handleSingleSubscription(const Subscription& s);
+
+private:
     /// @brief The list of known, still valid subscriptions
     static std::vector<Subscription> mySubscriptions;
+
+    /// @brief Map of commandIds -> their executors; applicable if the executor applies to the method footprint
+    static std::map<int, std::shared_ptr<VariableWrapper> > myWrapper;
 
     /// @brief A storage of objects
     static std::map<int, NamedRTree*> myObjects;

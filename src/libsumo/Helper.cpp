@@ -33,10 +33,14 @@
 #include <microsim/MSTransportable.h>
 #include <microsim/pedestrians/MSPerson.h>
 #include <libsumo/TraCIDefs.h>
+#include <libsumo/Edge.h>
 #include <libsumo/InductionLoop.h>
 #include <libsumo/Junction.h>
+#include <libsumo/Lane.h>
+#include <libsumo/Person.h>
 #include <libsumo/POI.h>
 #include <libsumo/Polygon.h>
+#include <libsumo/Vehicle.h>
 #include <traci-server/TraCIConstants.h>
 #include "Helper.h"
 
@@ -93,6 +97,7 @@ namespace libsumo {
 // static member initializations
 // ===========================================================================
 std::vector<Subscription> Helper::mySubscriptions;
+std::map<int, std::shared_ptr<VariableWrapper> > Helper::myWrapper;
 std::map<int, NamedRTree*> Helper::myObjects;
 LANE_RTREE_QUAL* Helper::myLaneTree;
 std::map<std::string, MSVehicle*> Helper::myRemoteControlledVehicles;
@@ -108,6 +113,47 @@ Helper::subscribe(const int commandId, const std::string& id, const std::vector<
     std::vector<std::vector<unsigned char> > parameters;
     libsumo::Subscription s(commandId, id, variables, parameters, beginTime, endTime, contextDomain, range);
     mySubscriptions.push_back(s);
+}
+
+
+void
+Helper::handleSubscriptions(const SUMOTime t) {
+    for (const libsumo::Subscription& s : mySubscriptions) {
+        if (s.beginTime > t) {
+            continue;
+        }
+        handleSingleSubscription(s);
+    }
+}
+
+
+void
+Helper::handleSingleSubscription(const Subscription& s) {
+    const int getCommandId = s.contextDomain > 0 ? s.contextDomain : s.commandId - 0x30;
+    std::set<std::string> objIDs;
+    if (s.contextDomain > 0) {
+        PositionVector shape;
+        findObjectShape(s.commandId, s.id, shape);
+        collectObjectsInRange(s.contextDomain, shape, s.range, objIDs);
+    } else {
+        objIDs.insert(s.id);
+    }
+    const int numVars = s.contextDomain > 0 && s.variables.size() == 1 && s.variables[0] == ID_LIST ? 0 : (int)s.variables.size();
+    if (myWrapper.empty()) {
+        myWrapper[CMD_GET_EDGE_VARIABLE] = Edge::makeWrapper();
+    }
+    auto wrapper = myWrapper.find(getCommandId);
+    if (wrapper == myWrapper.end()) {
+        throw TraCIException("Unsupported command specified");
+    }
+    std::shared_ptr<VariableWrapper> handler = wrapper->second;
+    for (const std::string objID : objIDs) {
+        if (numVars > 0) {
+            for (const int variable : s.variables) {
+                handler->handle(objID, variable, handler.get());
+            }
+        }
+    }
 }
 
 
@@ -224,6 +270,39 @@ Helper::cleanup() {
     myObjects.clear();
     delete myLaneTree;
     myLaneTree = 0;
+}
+
+
+void
+Helper::findObjectShape(int domain, const std::string& id, PositionVector& shape) {
+    switch (domain) {
+    case CMD_SUBSCRIBE_INDUCTIONLOOP_CONTEXT:
+        InductionLoop::storeShape(id, shape);
+        break;
+    case CMD_SUBSCRIBE_LANE_CONTEXT:
+        Lane::storeShape(id, shape);
+        break;
+    case CMD_SUBSCRIBE_VEHICLE_CONTEXT:
+        Vehicle::storeShape(id, shape);
+        break;
+    case CMD_SUBSCRIBE_PERSON_CONTEXT:
+        Person::storeShape(id, shape);
+        break;
+    case CMD_SUBSCRIBE_POI_CONTEXT:
+        POI::storeShape(id, shape);
+        break;
+    case CMD_SUBSCRIBE_POLYGON_CONTEXT:
+        Polygon::storeShape(id, shape);
+        break;
+    case CMD_SUBSCRIBE_JUNCTION_CONTEXT:
+        Junction::storeShape(id, shape);
+        break;
+    case CMD_SUBSCRIBE_EDGE_CONTEXT:
+        Edge::storeShape(id, shape);
+        break;
+    default:
+        break;
+    }
 }
 
 
@@ -530,6 +609,7 @@ Helper::findCloserLane(const MSEdge* edge, const Position& pos, double& bestDist
     return newBest;
 }
 
+
 bool
 Helper::moveToXYMap_matchingRoutePosition(const Position& pos, const std::string& origID,
         const ConstMSEdgeVector& currentRoute, int routeIndex,
@@ -605,6 +685,35 @@ Helper::moveToXYMap_matchingRoutePosition(const Position& pos, const std::string
 #endif
     return true;
 }
+
+
+Helper::SubscriptionWrapper::SubscriptionWrapper(VariableWrapper::SubscriptionHandler handler, SubscriptionResults& into, ContextSubscriptionResults& context)
+    : VariableWrapper(handler), myResults(into), myContextResults(context), myActiveResults(into) {
+
+}
+
+void
+Helper::SubscriptionWrapper::setContext(const std::string& refID) {
+    myActiveResults = refID == "" ? myResults : myContextResults[refID];
+}
+
+void
+Helper::SubscriptionWrapper::wrapDouble(const std::string& objID, const int variable, const double value) {
+    myActiveResults[objID][variable] = std::make_shared<TraCIDouble>(value);
+}
+
+
+void
+Helper::SubscriptionWrapper::wrapInt(const std::string& objID, const int variable, const int value) {
+
+}
+
+
+void
+Helper::SubscriptionWrapper::wrapStringList(const std::string& objID, const int variable, const std::vector<std::string> value) {
+
+}
+
 
 }
 

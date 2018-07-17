@@ -498,7 +498,7 @@ Vehicle::getVia(const std::string& vehicleID) {
 std::pair<int, int>
 Vehicle::getLaneChangeState(const std::string& vehicleID, int direction) {
     MSVehicle* veh = getVehicle(vehicleID);
-    if (veh->isOnRoad()) {
+    if (veh->isOnRoad() && veh->getLaneChangeModel().hasSavedState(direction)) {
         return veh->getLaneChangeModel().getSavedState(direction);
     } else {
         return std::make_pair((int)LCA_UNKNOWN, (int)LCA_UNKNOWN);
@@ -747,7 +747,14 @@ Vehicle::changeLane(const std::string& vehicleID, int laneIndex, SUMOTime durati
 void
 Vehicle::changeLaneRelative(const std::string& vehicleID, int laneChange, SUMOTime duration) {
     std::vector<std::pair<SUMOTime, int> > laneTimeLine;
-    int laneIndex = getVehicle(vehicleID)->getLaneIndex() + laneChange;
+    int laneIndex;
+    // Check in which direction the lane change should be performed 0: for right, >0 to left
+    if (laneChange > 0) {
+        laneIndex = getVehicle(vehicleID)->getLaneIndex() + laneChange;
+    }
+    else {
+        laneIndex = getVehicle(vehicleID)->getLaneIndex() -1;
+    }
     laneTimeLine.push_back(std::make_pair(MSNet::getInstance()->getCurrentTimeStep(), laneIndex));
     laneTimeLine.push_back(std::make_pair(MSNet::getInstance()->getCurrentTimeStep() + duration, laneIndex));
     getVehicle(vehicleID)->getInfluencer().setLaneTimeLine(laneTimeLine);
@@ -1310,6 +1317,12 @@ Vehicle::setParameter(const std::string& vehicleID, const std::string& key, cons
     } else {
         ((SUMOVehicleParameter&)veh->getParameter()).setParameter(key, value);
     }
+}
+
+
+void
+Vehicle::storeShape(const std::string& id, PositionVector& shape) {
+    shape.push_back(getVehicle(id)->getPosition());
 }
 
 

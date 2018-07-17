@@ -369,6 +369,43 @@ Edge::getContextSubscriptionResults(const std::string& objID) {
 }
 
 
+void
+Edge::storeShape(const std::string& id, PositionVector& shape) {
+    const MSEdge* const e = getEdge(id);
+    const std::vector<MSLane*>& lanes = e->getLanes();
+    shape = lanes.front()->getShape();
+    if (lanes.size() > 1) {
+        copy(lanes.back()->getShape().begin(), lanes.back()->getShape().end(), back_inserter(shape));
+    }
+}
+
+
+std::shared_ptr<VariableWrapper>
+Edge::makeWrapper() {
+    return std::make_shared<Helper::SubscriptionWrapper>(handleVariable, mySubscriptionResults, myContextSubscriptionResults);
+}
+
+
+bool
+Edge::handleVariable(const std::string& objID, const int variable, VariableWrapper* wrapper) {
+    switch (variable) {
+    case VAR_CURRENT_TRAVELTIME:
+        wrapper->wrapDouble(objID, variable, getTraveltime(objID));
+        return true;
+    case VAR_WAITING_TIME:
+        wrapper->wrapDouble(objID, variable, getWaitingTime(objID));
+        return true;
+    case LAST_STEP_PERSON_ID_LIST:
+        wrapper->wrapStringList(objID, variable, getLastStepPersonIDs(objID));
+        return true;
+    case LAST_STEP_VEHICLE_ID_LIST:
+        wrapper->wrapStringList(objID, variable, getLastStepVehicleIDs(objID));
+        return true;
+    default:
+        return false;
+    }
+}
+
 
 }
 

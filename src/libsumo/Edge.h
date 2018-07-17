@@ -25,6 +25,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 #include <libsumo/TraCIDefs.h>
 
 
@@ -32,6 +33,10 @@
 // class declarations
 // ===========================================================================
 class MSEdge;
+class PositionVector;
+namespace libsumo {
+    class VariableWrapper;
+}
 
 
 // ===========================================================================
@@ -76,15 +81,25 @@ public:
     static void setMaxSpeed(const std::string& id, double value);
     static void setParameter(const std::string& id, const std::string& name, const std::string& value);
 
-    static void subscribe(const std::string& objID, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime);
-    static void subscribeContext(const std::string& objID, int domain, double range, const std::vector<int>& vars, SUMOTime beginTime, SUMOTime endTime);
+    static void subscribe(const std::string& objID, const std::vector<int>& vars=std::vector<int>(), SUMOTime beginTime=0, SUMOTime endTime=2^31-1);
+    static void subscribeContext(const std::string& objID, int domain, double range, const std::vector<int>& vars=std::vector<int>(), SUMOTime beginTime=0, SUMOTime endTime=2^31-1);
     static const SubscriptionResults getSubscriptionResults();
     static const TraCIResults getSubscriptionResults(const std::string& objID);
     static const ContextSubscriptionResults getContextSubscriptionResults();
     static const SubscriptionResults getContextSubscriptionResults(const std::string& objID);
 
+    /** @brief Saves the shape of the requested object in the given container
+    *  @param id The id of the edge to retrieve
+    *  @param shape The container to fill
+    */
+    static void storeShape(const std::string& id, PositionVector& shape);
+
+    static std::shared_ptr<VariableWrapper> makeWrapper();
+
 private:
     static MSEdge* getEdge(const std::string& id);
+
+    static bool handleVariable(const std::string& objID, const int variable, VariableWrapper* wrapper);
 
 private:
     static SubscriptionResults mySubscriptionResults;

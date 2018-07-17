@@ -880,6 +880,23 @@ GNEAttributeCarrier::isValidID(const std::string& value) {
 }
 
 
+bool 
+GNEAttributeCarrier::isValidListOfIDs(const std::string& value) {
+    std::vector<std::string> typeIDs = parse<std::vector<std::string>>(value);
+    if(typeIDs.empty()) {
+        return false;
+    } else {
+        // check that gives IDs are validd
+        for(auto i : typeIDs) {
+            if(!isValidID(i)) {
+                return false;
+            }
+        }
+        return true;
+    }
+}
+
+
 bool
 GNEAttributeCarrier::isValidName(const std::string& value) {
     if(value.size() == 0) {
@@ -1248,7 +1265,7 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "",
             SUMOXMLDefinitions::TrafficLightTypes.getStrings());
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_TLID,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE | ATTRPROPERTY_DEFAULTVALUE,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_DEFAULTVALUE,
             "An optional id for the traffic light program", 
             "");
     }
@@ -1639,6 +1656,8 @@ GNEAttributeCarrier::fillAttributeCarriers() {
     {
         // set values of tag
         myAllowedTags[currentTag] = TagValues(TAGPROPERTY_ADDITIONAL | TAGPROPERTY_DRAWABLE | TAGPROPERTY_SELECTABLE | TAGPROPERTY_DETECTOR | TAGPROPERTY_BLOCKMOVEMENT, 21, ICON_E2);
+        // set "file" as deprecated attribute
+        myAllowedTags[currentTag].addDeprecatedAttribute(SUMO_ATTR_CONT);
         // set values of attributes
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_ID,
             ATTRPROPERTY_STRING | ATTRPROPERTY_UNIQUE,
@@ -1665,13 +1684,9 @@ GNEAttributeCarrier::fillAttributeCarriers() {
             "Name of " + toString(currentTag), 
             "");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_FILE,
-            ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
+            ATTRPROPERTY_STRING | ATTRPROPERTY_FILENAME | ATTRPROPERTY_DEFAULTVALUE,
             "The path to the output file", 
             "");
-        myAllowedTags[currentTag].addAttribute(SUMO_ATTR_CONT,
-            ATTRPROPERTY_BOOL | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
-            "Holds the information whether detectors longer than a lane shall be cut off or continued (set it to true for the second case))", 
-            "0");
         myAllowedTags[currentTag].addAttribute(SUMO_ATTR_HALTING_TIME_THRESHOLD,
             ATTRPROPERTY_FLOAT | ATTRPROPERTY_POSITIVE | ATTRPROPERTY_TIME | ATTRPROPERTY_DEFAULTVALUE | ATTRPROPERTY_OPTIONAL,
             "The time-based threshold that describes how much time has to pass until a vehicle is recognized as halting)", 
