@@ -49,6 +49,7 @@ GNEChange_Attribute::GNEChange_Attribute(GNEAttributeCarrier* ac,
     myKey(key),
     myOrigValue(customOrigValue ? origValue : ac->getAttribute(key)),
     myNewValue(value),
+    myNetElement(nullptr),
     myAdditional(nullptr),
     myShape(nullptr) {
     myAC->incRef("GNEChange_Attribute " + toString(myKey));
