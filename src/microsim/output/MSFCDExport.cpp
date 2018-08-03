@@ -69,6 +69,7 @@ MSFCDExport::write(OutputDevice& of, SUMOTime timestep, bool elevation) {
             GeoConvHelper::getFinal().cartesian2geo(pos);
             of.writeAttr(SUMO_ATTR_LON, pos.x());
             of.writeAttr(SUMO_ATTR_LAT, pos.y());
+            of.writeAttr(SUMO_ATTR_SPEED, veh->getSpeed());
             if (elevation) {
                 of.writeAttr(SUMO_ATTR_Z, pos.z());
             }
